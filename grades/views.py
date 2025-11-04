@@ -2,41 +2,46 @@ from django.shortcuts import render
 from django.db.models import Avg
 from django.contrib.auth.decorators import login_required
 from .models import Grade
-# İleride Synergy Analyzer'ı buraya dahil edeceğiz
-# from .utils import calculate_weighted_po_score 
+from .utils import calculate_weighted_po_score 
 
 @login_required
 def grade_dashboard_view(request):
-    """
-    Öğrenci veya Eğitmen için not ve başarı gösterge tablosu.
-    Şimdilik, basit bir LO Mastery Score ortalaması gösterir.
-    """
     user = request.user
     context = {}
 
     if user.is_authenticated:
-
-        student_grades = Grade.objects.filter(student=user)
-
-        avg_mastery_result = student_grades.aggregate(
-            avg_mastery=Avg('lo_mastery_score')
-        )
-
-        avg_mastery = avg_mastery_result.get('avg_mastery') if avg_mastery_result.get('avg_mastery') is not None else 0.0
-
-        context['user_is_student'] = user.role == 'STUDENT'
+        
         context['user_name'] = user.get_full_name() or user.username
-        context['average_lo_mastery'] = f"{avg_mastery:.2f}"
+        context['user_role'] = user.role
 
+        if user.role == 'STUDENT':
+            
+            po_scores = calculate_weighted_po_score(student_id=user.id)
+            context['po_scores'] = po_scores
+            
+            if po_scores:
+                avg_po_score = sum(po_scores.values()) / len(po_scores)
+                context['average_po_score'] = f"{avg_po_score:.2f}"
+            else:
+                context['average_po_score'] = "N/A"
+            
+            context['is_student'] = True
+            
+        elif user.role == 'INSTRUCTOR':
+            context['is_instructor'] = True
+            context['message'] = "Instructor dashboard features will be added here."
+            
+        elif user.role == 'DEPT_HEAD':
+            context['is_dept_head'] = True
+            context['message'] = "Department Head reporting features will be added here."
+            
+        if user.role == 'STUDENT' and not context.get('po_scores'):
+             context['info_message'] = "No grades or PO contribution data found to calculate Synergy Score."
 
     return render(request, 'grades/dashboard.html', context)
 
 
-# Basit bir deneme görünümünü tutmaya devam edelim (Test amaçlı)
 def all_grades_average_view(request):
-    """
-    Tüm veritabanındaki LO Mastery Score ortalamasını hesaplar.
-    """
     avg_score = Grade.objects.aggregate(
         avg_mastery=Avg('lo_mastery_score')
     )['avg_mastery']
