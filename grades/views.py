@@ -8,3 +8,5 @@ def average_view(request):
 
     
     return render(request, 'average.html', {'average': avg_score})
+
+#python
