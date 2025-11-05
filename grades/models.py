@@ -2,23 +2,20 @@ from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 
-from courses.models import Assessment
-from outcomes.models import LearningOutcome
-from accounts.models import UserRole
 
 
 class Grade(models.Model):
     student = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        limit_choices_to={'role': UserRole.STUDENT},
+        limit_choices_to={'is_student': True},
         related_name='grades',
         verbose_name="Student"
     )
 
  
     assessment = models.ForeignKey(
-        Assessment,
+        'courses.Assessment',
         on_delete=models.CASCADE,
         related_name='grades',
         verbose_name="Assessment"
@@ -26,7 +23,7 @@ class Grade(models.Model):
 
 
     learning_outcome = models.ForeignKey(
-        LearningOutcome,
+        'outcomes.LearningOutcome',
         on_delete=models.CASCADE,
         related_name='grades',
         verbose_name="Learning Outcome"
@@ -54,8 +51,8 @@ class Grade(models.Model):
         unique_together = ('student', 'assessment', 'learning_outcome')
 
     def __str__(self):
-        return (
-            f"Student: {self.student.username} - "
-            f"Assessment: {self.assessment.course.code}/{self.assessment.get_type_display()} - "
-            f"LO: {self.learning_outcome.code}"
-        )
+        student_username = getattr(self.student, "username", str(self.student))
+        course_code = getattr(getattr(self.assessment, 'course', None), 'code', 'N/A')
+        assessment_type = getattr(self.assessment, 'get_type_display', lambda: '')()
+        lo_code = getattr(self.learning_outcome, 'code', 'N/A')
+        return f"Student: {student_username} - Assessment: {course_code}/{assessment_type} - LO: {lo_code}"

@@ -1,6 +1,9 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
-from outcomes.models import LearningOutcome 
+from django.conf import settings
+from decimal import Decimal
+from django.core.exceptions import ValidationError
+from django.db.models import Sum
 
 class Course(models.Model):
     code = models.CharField(
@@ -59,7 +62,7 @@ class Assessment(models.Model):
     )
     
     learning_outcomes = models.ManyToManyField(
-        LearningOutcome, 
+        "outcomes.LearningOutcome",
         related_name='assessments',
         verbose_name="Associated Learning Outcomes (LOs)" 
     )
@@ -71,3 +74,33 @@ class Assessment(models.Model):
 
     def __str__(self):
         return f"{self.course.code} - {self.get_type_display()}"
+
+    @property
+    def weight_fraction(self):
+        return (Decimal(self.weight_percentage) / Decimal(100)) if self.weight_percentage is not None else Decimal(0)
+
+    def clean(self):
+        qs=Assessment.objects.filter(course=self.course).exclude(pk=self.pk)
+        total_other=qs.aggregate(total=Sum('weight_percentage'))['total'] or 0
+        total=Decimal(total_other)+Decimal(self.weight_percentage or 0)
+
+        if total>Decimal(100):
+            raise ValidationError({'weight_percentage': f"Total weight for assessments in this course would exceed 100%. Current without this: {total_other}%. With this: {total}%."})
+
+class Enrollment(models.Model):
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        limit_choices_to={'is_student': True},
+        related_name='enrollments',
+    )
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name='enrollments',
+    )
+    enrolled_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('student', 'course')
+
+    def __str__(self):
+        return f"{self.student.username} in {self.course.title}"
