@@ -14,22 +14,18 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-# from django.contrib import admin
-from django.urls import path
-
-urlpatterns = [
-    #    path('admin/', admin.site.urls),
-]
-
-
 
 from django.contrib import admin
-from django.urls import path, include 
+from django.urls import path, include
+from django.views.generic import RedirectView 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # Diğer uygulama URL'leri buraya eklenecektir
     
-
     path('grades/', include('grades.urls')), 
+  
+    path('', RedirectView.as_view(pattern_name='grades:dashboard'), name='home'),
+    
+    # Not: Eğer ileride bir ana sayfanız olursa, bu satırı silip 
+    # 'home' görünümünüzü tanımlayabilirsiniz.
 ]
