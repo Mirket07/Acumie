@@ -59,7 +59,7 @@ ROOT_URLCONF = 'Acumie.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'ACUmie' / 'templates'], 
+        'DIRS': [BASE_DIR / 'Acumie' / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
