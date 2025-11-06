@@ -1,5 +1,8 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from decimal import Decimal
+from django.db.models import Sum
 
 class ProgramOutcome(models.Model):
     code = models.CharField(
@@ -39,7 +42,7 @@ class LearningOutcome(models.Model):
     )
     
     program_outcomes = models.ManyToManyField(
-        ProgramOutcome,
+        'ProgramOutcome',
         through='LO_PO_Contribution', 
         related_name='learning_outcomes'
     )
@@ -47,20 +50,30 @@ class LearningOutcome(models.Model):
     class Meta:
         verbose_name = "Learning Outcome (LO)"
         verbose_name_plural = "Learning Outcomes (LOs)"
+        ordering = ("code",)
 
     def __str__(self):
         return f"{self.code} - {self.title}"
+
+    def total_po_contribution(self):
+        total=self.lo_po_contributions.aggregate(total=Sum('contribution_percentage'))['total']
+        return Decimal(total or 0)
+
+    def check_po_contribution(self):
+        return self.total_po_contribution()<= Decimal('100.00')
 
 class LO_PO_Contribution(models.Model):
     learning_outcome = models.ForeignKey(
         LearningOutcome, 
         on_delete=models.CASCADE,
-        verbose_name="Learning Outcome(LO)"
+        verbose_name="Learning Outcome(LO)",
+        related_name='lo_po_contributions'
     )
     program_outcome = models.ForeignKey(
-        ProgramOutcome, 
+        'ProgramOutcome',
         on_delete=models.CASCADE,
-        verbose_name="Program Outcome (PO)"
+        verbose_name="Program Outcome (PO)",
+        related_name='lo_po_contributions'
     )
     contribution_percentage = models.DecimalField(
         max_digits=5, 
@@ -80,3 +93,18 @@ class LO_PO_Contribution(models.Model):
             f"{self.learning_outcome.code} -> {self.program_outcome.code}: "
             f"%{self.contribution_percentage}"
         )
+
+    def clean(self):
+        qs=LO_PO_Contribution.objects.filter(learning_outcome=self.learning_outcome).exclude(pk=self.pk)
+        total_other=qs.aggregate(total=Sum('contribution_percentage'))['total'] or Decimal('0')
+        total=Decimal(total_other) + Decimal(self.contribution_percentage or 0)
+
+        if total>Decimal('100.00'):
+            raise ValidationError({
+                'contribution_percentage': (
+                    f"Total contribution for {self.learning_outcome.code} would exceed 100%. "
+                    f"Current other total: {total_other}%. With this: {total}%."
+                )
+            })
+
+        super().clean()
