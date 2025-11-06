@@ -15,6 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import RedirectView 
@@ -22,10 +23,9 @@ from django.views.generic import RedirectView
 urlpatterns = [
     path('admin/', admin.site.urls),
     
-    path('grades/', include('grades.urls')), 
+    path('accounts/', include('django.contrib.auth.urls')),
   
-    path('', RedirectView.as_view(pattern_name='grades:dashboard'), name='home'),
+    path('grades/', include('grades.urls')), 
     
-    # Not: Eğer ileride bir ana sayfanız olursa, bu satırı silip 
-    # 'home' görünümünüzü tanımlayabilirsiniz.
+    path('', RedirectView.as_view(pattern_name='grades:dashboard'), name='home'),
 ]
