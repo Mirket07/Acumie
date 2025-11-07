@@ -108,3 +108,73 @@ class LO_PO_Contribution(models.Model):
             })
 
         super().clean()
+
+
+
+from django.conf import settings
+from django.core.validators import MinValueValidator, MaxValueValidator
+
+class StudentGoal(models.Model):
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE,
+        related_name='goals',
+        verbose_name="Student"
+    )
+    goal_description = models.CharField(
+        max_length=255,
+        verbose_name="Goal Description"
+    )
+    target_date = models.DateField(
+        verbose_name="Target Date"
+    )
+    
+    completion_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal(0.00),
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Completion (%)"
+    )
+    is_completed = models.BooleanField(
+        default=False,
+        verbose_name="Completed"
+    )
+    
+    class Meta:
+        verbose_name = "Student Goal"
+        verbose_name_plural = "Student Goals"
+        ordering = ['target_date']
+
+    def __str__(self):
+        return f"{self.student.username}'s Goal: {self.goal_description}"
+
+
+class GoalLearningOutcome(models.Model):
+    goal = models.ForeignKey(
+        StudentGoal, 
+        on_delete=models.CASCADE,
+        related_name='linked_outcomes',
+        verbose_name="Goal"
+    )
+    learning_outcome = models.ForeignKey(
+        LearningOutcome, 
+        on_delete=models.CASCADE,
+        verbose_name="Learning Outcome (LO)"
+    )
+
+    weight_in_goal = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Weight in Goal (%)",
+        help_text="The percentage of this goal focused on this specific LO."
+    )
+
+    class Meta:
+        verbose_name = "Goal LO Link"
+        verbose_name_plural = "Goal LO Links"
+        unique_together = ('goal', 'learning_outcome')
+
+    def __str__(self):
+        return f"{self.goal.goal_description} focuses on {self.learning_outcome.code}"
