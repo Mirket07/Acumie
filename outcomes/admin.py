@@ -26,8 +26,7 @@ from accounts.models import UserRole
 
 class GoalLearningOutcomeInline(admin.TabularInline):
     model = GoalLearningOutcome
-    extra = 1 
-    filter_horizontal = ('learning_outcome',) 
+    extra = 1
     fields = ('learning_outcome', 'weight_in_goal',)
 
 
