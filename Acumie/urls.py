@@ -27,5 +27,7 @@ urlpatterns = [
   
     path('grades/', include('grades.urls')), 
     
+    path('feedback/', include('feedback.urls')),
+    
     path('', RedirectView.as_view(pattern_name='grades:dashboard'), name='home'),
 ]
