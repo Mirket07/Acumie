@@ -19,3 +19,30 @@ class ProgramOutcomeAdmin(admin.ModelAdmin):
     list_display = ('code', 'title')
     search_fields = ('code', 'title')
 
+
+from django.contrib import admin
+from .models import StudentGoal, GoalLearningOutcome, LearningOutcome 
+from accounts.models import UserRole 
+
+class GoalLearningOutcomeInline(admin.TabularInline):
+    model = GoalLearningOutcome
+    extra = 1 
+    filter_horizontal = ('learning_outcome',) 
+    fields = ('learning_outcome', 'weight_in_goal',)
+
+
+@admin.register(StudentGoal)
+class StudentGoalAdmin(admin.ModelAdmin):
+    list_display = (
+        'student', 
+        'goal_description', 
+        'target_date', 
+        'completion_percentage', 
+        'is_completed'
+    )
+    list_filter = ('is_completed', 'target_date')
+    search_fields = ('student__username', 'goal_description')
+    
+
+    inlines = [GoalLearningOutcomeInline]
+    raw_id_fields = ('student',) 
