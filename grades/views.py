@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.db.models import Avg
 from django.contrib.auth.decorators import login_required
 from .models import Grade
+from courses.models import Course
 from .utils import calculate_weighted_po_score 
 
 @login_required
@@ -16,6 +17,9 @@ def grade_dashboard_view(request):
 
         if user.role == 'STUDENT':
             
+            total_courses = Course.objects.count()
+            context['total_courses'] = total_courses
+
             po_scores = calculate_weighted_po_score(student_id=user.id)
             context['po_scores'] = po_scores
             
