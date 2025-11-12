@@ -4,6 +4,6 @@ from . import views
 app_name = 'feedback'
 
 urlpatterns = [
-    # Geri bildirim formu için yer tutucu
-    # path('submit/', views.feedback_submit_view, name='submit'), 
+    path('submit/', views.feedback_submit_view, name='submit'), 
+    path('thank-you/', views.feedback_thank_you_view, name='thank_you'),
 ]
