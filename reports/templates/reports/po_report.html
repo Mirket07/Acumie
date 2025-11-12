@@ -1,0 +1,28 @@
+{% if not is_available %}
+    <div class="alert alert-warning">
+        <strong>Data Missing:</strong> {{ message }}
+        <p class="mt-2">Please ensure all course ECTS credits and LO-PO contribution percentages are entered.</p>
+    </div>
+{% else %}
+    <table class="table table-striped table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>PO Code</th>
+                <th>Average Mastery Score (%)</th>
+                <th>Students Included</th>
+                <th>Status</th> </tr>
+        </thead>
+        <tbody>
+            {% for po_code, data in report.items %}
+            <tr>
+                <td>
+                    {% if data.score >= 70 %}
+                        <span class="badge bg-success">Meets Target</span> {% elif data.score >= 50 %}
+                        <span class="badge bg-warning text-dark">Close to Target</span> {% else %}
+                        <span class="badge bg-danger">Needs Focus</span> {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
