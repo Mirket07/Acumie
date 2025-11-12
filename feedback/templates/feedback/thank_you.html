@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5 text-center">
+    <div class="alert alert-success" role="alert">
+        <h4 class="alert-heading">Thank You!</h4>
+        <p>Your anonymous feedback has been successfully submitted and will be reviewed.</p>
+        <hr>
+        <p class="mb-0">Your contribution is invaluable to the quality of our program.</p>
+    </div>
+    <a href="{% url 'grades:dashboard' %}" class="btn btn-primary mt-4">Go to Dashboard</a>
+</div>
+{% endblock content %}
