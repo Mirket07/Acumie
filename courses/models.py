@@ -80,6 +80,9 @@ class Assessment(models.Model):
         return (Decimal(self.weight_percentage) / Decimal(100)) if self.weight_percentage is not None else Decimal(0)
 
     def clean(self):
+        if not getattr(self,"course_id",None):
+            return
+
         qs=Assessment.objects.filter(course=self.course).exclude(pk=self.pk)
         total_other=qs.aggregate(total=Sum('weight_percentage'))['total'] or 0
         total=Decimal(total_other)+Decimal(self.weight_percentage or 0)
