@@ -95,6 +95,9 @@ class LO_PO_Contribution(models.Model):
         )
 
     def clean(self):
+        if not getattr(self,"learning_outcome_id",None):
+            return
+
         qs=LO_PO_Contribution.objects.filter(learning_outcome=self.learning_outcome).exclude(pk=self.pk)
         total_other=qs.aggregate(total=Sum('contribution_percentage'))['total'] or Decimal('0')
         total=Decimal(total_other) + Decimal(self.contribution_percentage or 0)
