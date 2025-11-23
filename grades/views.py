@@ -58,24 +58,20 @@ def grade_dashboard_view(request):
 
 
     courses = []
-    if role == 'STUDENT':
+    if request.user.is_staff or request.user.is_superuser:
+        try:
+            courses = list(Course.objects.all())
+        except Exception:
+            courses = []
+    else:
         try:
             enrollments = Enrollment.objects.filter(student=user).select_related('course')
             courses = [e.course for e in enrollments]
-        except DatabaseError as e:
-            logger.exception("DB error fetching enrollments for user %s: %s", user.id, e)
-            # fallback to query via Course relation
+        except Exception:
             try:
                 courses = list(Course.objects.filter(enrollments__student=user).distinct())
-            except DatabaseError as e2:
-                logger.exception("Fallback DB error fetching courses for user %s: %s", user.id, e2)
+            except Exception:
                 courses = []
-    elif role == 'INSTRUCTOR':
-        try:
-            courses = list(Course.objects.all())
-        except DatabaseError as e:
-            logger.exception("DB error fetching courses for instructor: %s", e)
-            courses = []
     context['courses'] = courses
 
     course_id = request.GET.get('course')
