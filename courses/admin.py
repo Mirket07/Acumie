@@ -2,11 +2,12 @@ from django.contrib import admin
 from .models import Course, Assessment
 from django.forms.models import BaseInlineFormSet
 from django.core.exceptions import ValidationError
+from decimal import Decimal, InvalidOperation
 
 class AssessmentInlineFormSet(BaseInlineFormSet):
     def clean(self):
         super().clean()
-        total=0
+        total=Decimal(0)
         for form in self.forms:
             if not getattr(form,"cleaned_data",None):
                 continue
@@ -16,11 +17,11 @@ class AssessmentInlineFormSet(BaseInlineFormSet):
             if weight_percentage is None:
                 continue
             try:
-                total +=float(weight_percentage)
-            except (TypeError, ValueError):
+                total +=Decimal(str(weight_percentage))
+            except (TypeError, ValueError, InvalidOperation):
                 continue
 
-        if total >100.0:
+        if total >Decimal("100"):
             raise ValidationError(
                 "Total weight of assessments for this course cannot exceed 100% "
                 f"(current total in formset: {total:.2f}%)."
