@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+  <h3>Bulk upload grades — {{ course.code }}</h3>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label">CSV file</label>
+      <input class="form-control" type="file" name="csv_file" accept=".csv">
+      <div class="form-text">Expected columns: student_username, assessment_id, lo_code, score_percentage, lo_mastery_score</div>
+    </div>
+    <button class="btn btn-primary" type="submit">Upload</button>
+    <a class="btn btn-link" href="{% url 'grades:teacher_grade_entry' course.id %}">Back to grade entry</a>
+  </form>
+</div>
+{% endblock %}
