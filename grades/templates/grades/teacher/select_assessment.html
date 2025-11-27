@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+  <h3>Select assessment for {{ course.code }} - {{ course.title }}</h3>
+  <ul class="list-group">
+    {% for a in assessments %}
+      <li class="list-group-item">
+        <a href="{% url 'grades:teacher_grade_entry' course.id %}?assessment={{ a.id }}">
+          {{ a.get_type_display }} (weight: {{ a.weight_percentage }}%)
+        </a>
+      </li>
+    {% empty %}
+      <li class="list-group-item">No assessments found</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}
