@@ -11,12 +11,14 @@ class CourseFilter(admin.SimpleListFilter):
 
     def lookups(self, request, model_admin):
         from courses.models import Course
-        courses = Course.objects.all()
+        courses = Course.objects.all().order_by('code')
         return [(c.id, c.code) for c in courses]
 
     def queryset(self, request, queryset):
-        if self.value():
-            return queryset.filter(assessment__course__id=self.value())
+        value = self.value()
+        if value:
+            return queryset.filter(assessment__course__id=value)
+        return queryset
 
 
 
@@ -51,18 +53,27 @@ class GradeAdmin(admin.ModelAdmin):
         ('Scores', {'fields': ('score_percentage', 'lo_mastery_score')}),
     )
 
+    raw_id_fields = ('student', 'assessment', 'learning_outcome')
+    list_per_page = 50
+    ordering = ('student__username',)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related('student', 'assessment__course', 'learning_outcome')
+
     @admin.display(description='Student')
     def student_username(self, obj):
-        return obj.student.username
+        return getattr(obj.student, 'username', str(obj.student))
 
     @admin.display(description='Course Code')
     def course_code(self, obj):
-        return obj.assessment.course.code
+        course=getattr(obj.assessment, 'course', None)
+        return getattr(course, 'code', 'N/A')
 
     @admin.display(description='Assessment Type')
     def assessment_type(self, obj):
-        return obj.assessment.get_type_display()
+        return obj.assessment.get_type_display() if obj.assessment else ''
 
     @admin.display(description='LO Code')
     def lo_code(self, obj):
-        return obj.learning_outcome.code
+        return getattr(obj.learning_outcome, 'code', 'N/A')

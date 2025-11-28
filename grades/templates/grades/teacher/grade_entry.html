@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+  <h3>Grade entry — {{ course.code }} / {{ assessment.get_type_display }}</h3>
+  <p>LOs: {% for lo in los %}{{ lo.code }} {% endfor %}</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ formset.management_form }}
+    <table class="table table-sm">
+      <thead><tr><th>Student</th><th>LO</th><th>Score (%)</th><th>Mastery (1-5)</th></tr></thead>
+      <tbody>
+        {% for form in formset %}
+          <tr>
+            <td>{{ form.instance.student.get_full_name|default:form.instance.student.username }}</td>
+            <td>{{ form.instance.learning_outcome.code }}</td>
+            <td>{{ form.score_percentage }}</td>
+            <td>{{ form.lo_mastery_score }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button class="btn btn-primary" type="submit">Save grades</button>
+    <a class="btn btn-secondary" href="{% url 'grades:teacher_grade_bulk_upload' course.id %}">Bulk upload CSV</a>
+  </form>
+</div>
+{% endblock %}

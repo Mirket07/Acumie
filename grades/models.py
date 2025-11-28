@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+from django.db.models import CheckConstraint,Q,Index
 
 
 
@@ -50,6 +51,12 @@ class Grade(models.Model):
         verbose_name = "Grade"
         verbose_name_plural = "Grades"
         unique_together = ('student', 'assessment', 'learning_outcome')
+        indexes=[
+            Index(fields=['student', 'assessment']),
+        ]
+        constraints=[
+            CheckConstraint(check=Q(score_percentage__gte=0)& Q(score_percentage__lte=100), name='grade_score_percentage_between_0_and_100'), CheckConstraint(check=Q(lo_mastery_score__gte=1) & Q(lo_mastery_score__lte=5), name='grade_lo_mastery_between_1_and_5'),
+        ]
 
     def __str__(self):
         student_username = getattr(self.student, "username", str(self.student))
