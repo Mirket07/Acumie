@@ -96,3 +96,16 @@ class CourseGrade(models.Model):
         student_name = getattr(self.student, "username", str(self.student))
         course_code = getattr(self.course, 'code', 'N/A')
         return f"{student_name} - {course_code}: {self.grade}"
+
+class GradeAudit(models.Model):
+    grade = models.ForeignKey('Grade', on_delete=models.CASCADE, related_name='audits', null=True)
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    assessment = models.ForeignKey('courses.Assessment', on_delete=models.SET_NULL, null=True)
+    learning_outcome = models.ForeignKey('outcomes.LearningOutcome', on_delete=models.SET_NULL, null=True)
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='grade_changes')
+    old_score = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    new_score = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    old_mastery = models.IntegerField(null=True, blank=True)
+    new_mastery = models.IntegerField(null=True, blank=True)
+    reason = models.TextField(blank=True, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)

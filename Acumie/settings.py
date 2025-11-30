@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'accounts',
     'courses',
-    'grades',
+    'grades.apps.GradesConfig',
     'outcomes',
     'reports',
     'feedback',
