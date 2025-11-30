@@ -29,6 +29,16 @@ class Course(models.Model):
     def __str__(self):
         return f"{self.code} - {self.title}"
 
+    instructor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        limit_choices_to={'is_teacher': True},
+        related_name='instructed_courses',
+        verbose_name='Instructor'
+    )
+
 
 # --- 2. Assessment Model ---
 class Assessment(models.Model):
