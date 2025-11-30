@@ -11,7 +11,6 @@
 
 <div class="container-fluid">
   <div class="row">
-    <!-- Sidebar: courses (no Admin / Refresh buttons) -->
     <aside class="col-md-3 bg-light vh-100 p-3 sidebar-course">
       <h5 class="mb-3">Courses</h5>
       <div class="list-group">
@@ -28,10 +27,8 @@
           <div class="alert alert-info">No courses found.</div>
         {% endfor %}
       </div>
-      <!-- removed Admin and Refresh buttons per your request -->
     </aside>
 
-    <!-- Main content -->
     <main class="col-md-9 p-4">
       <div class="d-flex justify-content-between align-items-start mb-3">
         <div>
@@ -69,7 +66,6 @@
         </div>
       </div>
 
-      <!-- PO table unchanged -->
       <div class="card mb-4">
         <div class="card-header">PO Completion Percentages</div>
         <div class="card-body">
@@ -105,10 +101,8 @@
       </div>
       {% endif %}
 
-      <!-- Course detail (unchanged) -->
       {% if selected_course %}
-        <!-- ... remainder unchanged ... -->
-      {% else %}
+      % else %}
         <div class="card">
           <div class="card-body">
             <p class="mb-0">Select a course on the left to see detailed results.</p>
@@ -119,7 +113,6 @@
   </div>
 </div>
 
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 (function(){
