@@ -1,18 +1,24 @@
+# grades/views_teacher.py
 import csv
 import io
 from decimal import Decimal
 from typing import List, Tuple
+from functools import wraps
+
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import user_passes_test, login_required
+from django.contrib.auth.decorators import login_required
 from django.forms import modelformset_factory
 from django.db import transaction, DatabaseError
 from django.contrib import messages
 from django.urls import reverse
+from django.conf import settings
+from django.http import HttpResponseForbidden
+from django.core.exceptions import PermissionDenied
+from django.contrib.auth.views import redirect_to_login
+
 from .models import Grade
 from courses.models import Course, Assessment, Enrollment
 from outcomes.models import LearningOutcome
-from django.conf import settings
-from django.http import HttpResponseForbidden
 
 
 
@@ -24,17 +30,37 @@ except ImportError:
     GradeForm = None
     GradeFormSet = None
 
+
 DEFAULT_MAX_UPLOAD_BYTES = getattr(settings, "GRADE_CSV_MAX_BYTES", 5 * 1024 * 1024)
 ALLOWED_UPLOAD_EXTENSIONS = getattr(settings, "GRADE_CSV_ALLOWED_EXT", (".csv",))
 
 
+# CHANGED: new decorator factory that allows staff/superuser OR users with the permission.
+def permission_or_staff_required(perm_codename: str):
+    """
+    Decorator factory: allow if user is staff/superuser OR has given perm OR has is_teacher flag.
+    Redirects anonymous users to login, raises PermissionDenied (403) for authenticated users
+    without permission.
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def _wrapped(request, *args, **kwargs):
+            user = request.user
+            if not user.is_authenticated:
+                return redirect_to_login(request.get_full_path())
+            # Allow superuser / staff
+            if user.is_superuser or user.is_staff:
+                return view_func(request, *args, **kwargs)
+            # Allow if explicit permission or legacy is_teacher boolean
+            if user.has_perm(perm_codename) or getattr(user, "is_teacher", False):
+                return view_func(request, *args, **kwargs)
+            # Otherwise deny
+            raise PermissionDenied
+        return _wrapped
+    return decorator
 
-def teacher_required(user) -> bool:
-    return user.is_active and (getattr(user, "is_teacher", False) or user.is_staff)
 
-
-teacher_decorator = user_passes_test(teacher_required)
-
+# helper: course ownership check (keeps previous logic)
 def _user_can_manage_course(user, course: Course) -> bool:
     if user.is_staff or user.is_superuser:
         return True
@@ -43,10 +69,15 @@ def _user_can_manage_course(user, course: Course) -> bool:
             return course.instructor.id == user.id
         except Exception:
             return False
+    # fallback: allow users with the is_teacher flag
     return getattr(user, 'is_teacher', False)
 
 
-@teacher_decorator
+# Apply the new decorator: requires 'grades.can_grade' OR staff/superuser OR is_teacher
+CAN_GRADE_DECORATOR = permission_or_staff_required('grades.can_grade')
+
+
+@CAN_GRADE_DECORATOR
 @login_required
 def teacher_select_assessment(request, course_id: int):
     course = get_object_or_404(Course, pk=course_id)
@@ -59,7 +90,7 @@ def teacher_select_assessment(request, course_id: int):
     })
 
 
-@teacher_decorator
+@CAN_GRADE_DECORATOR
 @login_required
 def teacher_grade_entry(request, course_id: int):
     course = get_object_or_404(Course, pk=course_id)
@@ -142,7 +173,7 @@ def teacher_grade_entry(request, course_id: int):
         else:
             messages.error(request, "There are validation errors. Please fix them and submit again.")
     else:
-            formset = grade_formset_class(queryset=qs)
+        formset = grade_formset_class(queryset=qs)
 
     return render(request, 'grades/teacher/grade_entry.html', {
         'course': course,
@@ -154,7 +185,7 @@ def teacher_grade_entry(request, course_id: int):
     })
 
 
-@teacher_decorator
+@CAN_GRADE_DECORATOR
 @login_required
 def teacher_grade_bulk_upload(request, course_id: int):
     course = get_object_or_404(Course, pk=course_id)
@@ -167,7 +198,7 @@ def teacher_grade_bulk_upload(request, course_id: int):
             messages.error(request, "No file uploaded.")
             return redirect(request.path)
 
-        filename=csvfile.name or ""
+        filename = csvfile.name or ""
         if not any(filename.lower().endswith(ext) for ext in ALLOWED_UPLOAD_EXTENSIONS):
             messages.error(request, f"Invalid file extension. Allowed: {', '.join(ALLOWED_UPLOAD_EXTENSIONS)}")
             return redirect(request.path)

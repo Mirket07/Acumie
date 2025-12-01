@@ -51,6 +51,9 @@ class Grade(models.Model):
         verbose_name = "Grade"
         verbose_name_plural = "Grades"
         unique_together = ('student', 'assessment', 'learning_outcome')
+        permissions = [
+            ("can_grade", "Can enter and modify grades"),
+        ]
         indexes=[
             Index(fields=['student', 'assessment']),
         ]
