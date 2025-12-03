@@ -1,27 +1,28 @@
 {% extends "base.html" %}
 {% load static %}
+
 {% block title %}Student Dashboard - ACUmie{% endblock %}
 
 {% block content %}
 <style>
   .sidebar-course { max-height: calc(100vh - 120px); overflow:auto; }
   .display-6 { font-size: 2rem; }
-  canvas#loChart { width:100% !important; height: 220px !important; }
 </style>
 
 <div class="container-fluid">
   <div class="row">
-    <aside class="col-md-3 bg-light vh-100 p-3 sidebar-course">
-      <h5 class="mb-3">Courses</h5>
-      <div class="list-group">
+    
+    <aside class="col-md-3 bg-light vh-100 p-3 sidebar-course border-end">
+      <h5 class="mb-3"><i class="bi bi-collection-play"></i> My Courses</h5>
+      <div class="list-group list-group-flush">
         {% for c in courses %}
-          <a href="?course={{ c.id }}" class="list-group-item list-group-item-action {% if selected_course and selected_course.id == c.id %}active{% endif %}">
-            <div class="d-flex w-100 justify-content-between">
-              <h6 class="mb-1 small">{{ c.code }}</h6>
-              <small class="text-muted">{{ c.ects_credit }}</small>
+          <a href="{% url 'courses:detail' c.id %}" class="list-group-item list-group-item-action border-0 mb-2 shadow-sm rounded">
+            <div class="d-flex w-100 justify-content-between align-items-center">
+              <h6 class="mb-1 fw-bold text-primary">{{ c.code }}</h6>
+              <span class="badge bg-secondary rounded-pill">{{ c.ects_credit }} ECTS</span>
             </div>
-            <p class="mb-1 small text-truncate">{{ c.title }}</p>
-            <small class="text-muted">View report</small>
+            <p class="mb-1 small text-muted text-truncate">{{ c.title }}</p>
+            <small class="text-success"><i class="bi bi-eye"></i> View Content & Grades</small>
           </a>
         {% empty %}
           <div class="alert alert-info">No courses found.</div>
@@ -30,104 +31,56 @@
     </aside>
 
     <main class="col-md-9 p-4">
-      <div class="d-flex justify-content-between align-items-start mb-3">
+      
+      <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h2 class="mb-0">Welcome, {{ user_name }}</h2>
-          <p class="text-muted small mb-0">{{ user_role }}</p>
+          <h2 class="fw-bold">Welcome, {{ user_name }}! 👋</h2>
+          <p class="text-muted mb-0">Role: {{ user_role }}</p>
         </div>
         <div class="text-end">
           {% if is_student %}
-            <div class="small text-muted">Courses: {{ total_courses }}</div>
-            <div class="small text-muted">Avg PO: {{ average_po_score }}</div>
+             <span class="badge bg-light text-dark border px-3 py-2">Total Courses: {{ total_courses }}</span>
           {% endif %}
         </div>
       </div>
+
+      <hr class="mb-4">
 
       {% if is_student %}
+      
       <div class="row mb-4">
         <div class="col-md-6">
-          <div class="card shadow-sm mb-3">
+          <div class="card shadow-sm border-start border-primary border-4 h-100">
             <div class="card-body">
-              <h6 class="card-title">Overall PO Mastery</h6>
-              <p class="display-6 mb-0">
-                {% if average_po_score and average_po_score != "N/A" %}{{ average_po_score }}%{% else %}0.00%{% endif %}
-              </p>
+              <h6 class="card-title text-muted text-uppercase small">Overall PO Mastery</h6>
+              <div class="d-flex align-items-center">
+                  <h1 class="display-6 fw-bold mb-0 me-3">
+                    {% if average_po_score and average_po_score != "N/A" %}
+                        {{ average_po_score }}%
+                    {% else %}
+                        0.00%
+                    {% endif %}
+                  </h1>
+                  <i class="bi bi-graph-up-arrow fs-1 text-primary opacity-25 ms-auto"></i>
+              </div>
             </div>
           </div>
         </div>
 
         <div class="col-md-6">
-          <div class="card shadow-sm mb-3">
+          <div class="card shadow-sm border-start border-success border-4 h-100">
             <div class="card-body">
-              <h6 class="card-title">Total Courses</h6>
-              <p class="display-6 mb-0">{{ total_courses }}</p>
+              <h6 class="card-title text-muted text-uppercase small">Active Enrollments</h6>
+              <div class="d-flex align-items-center">
+                  <h1 class="display-6 fw-bold mb-0 me-3">{{ total_courses }}</h1>
+                  <i class="bi bi-book fs-1 text-success opacity-25 ms-auto"></i>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="card mb-4">
-        <div class="card-header">PO Completion Percentages</div>
-        <div class="card-body">
-          {% if info_message %}
-            <div class="alert alert-warning">{{ info_message }}</div>
-          {% elif po_scores %}
-            <div class="table-responsive">
-              <table class="table table-sm">
-                <thead><tr><th>PO</th><th>Score</th><th>Status</th></tr></thead>
-                <tbody>
-                  {% for po_code, score in po_scores.items %}
-                    <tr>
-                      <td><strong>{{ po_code }}</strong></td>
-                      <td>{{ score|floatformat:2 }}%</td>
-                      <td>
-                        {% if score >= 80 %}
-                          <span class="badge bg-success">Excellent</span>
-                        {% elif score >= 60 %}
-                          <span class="badge bg-warning text-dark">Good</span>
-                        {% else %}
-                          <span class="badge bg-danger">Needs work</span>
-                        {% endif %}
-                      </td>
-                    </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-          {% else %}
-            <p class="text-muted">No PO data available.</p>
-          {% endif %}
-        </div>
-      </div>
-      {% endif %}
-
-      {% if selected_course %}
-      % else %}
-        <div class="card">
-          <div class="card-body">
-            <p class="mb-0">Select a course on the left to see detailed results.</p>
-          </div>
-        </div>
-      {% endif %}
-    </main>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>
-(function(){
-  const loScores = {
-    {% for lo, score in lo_scores.items %}
-      "{{ lo.code|escapejs }}": {{ score }},
-    {% endfor %}
-  };
-  const labels = Object.keys(loScores);
-  const data = Object.values(loScores);
-  if(labels.length > 0){
-    const ctx = document.getElementById('loChart')?.getContext('2d');
-    if(ctx) new Chart(ctx, { type:'bar', data:{labels, datasets:[{label:'LO score', data}]}, options:{scales:{y:{min:0,max:100}}}});
-  }
-})();
-</script>
-{% endblock content %}
-
+      <div class="card shadow-lg border-0">
+        <div class="card-header bg-dark text-white d-flex align-items-center">
+            <i class="bi bi-bar-chart-steps me-2"></i>
+            <h5 class="mb-0">Synergy Analyzer: PO Completion Percentages</h5>
