@@ -5,7 +5,7 @@
 
 {% block content %}
 <style>
-  .sidebar-course { max-height: calc(100vh - 120px); overflow:auto; }
+  .sidebar-course { max-height: calc(100vh - 120px); overflow-y: auto; }
   .display-6 { font-size: 2rem; }
 </style>
 
@@ -22,7 +22,6 @@
               <span class="badge bg-secondary rounded-pill">{{ c.ects_credit }} ECTS</span>
             </div>
             <p class="mb-1 small text-muted text-truncate">{{ c.title }}</p>
-            <small class="text-success"><i class="bi bi-eye"></i> View Content & Grades</small>
           </a>
         {% empty %}
           <div class="alert alert-info">No courses found.</div>
@@ -37,50 +36,21 @@
           <h2 class="fw-bold">Welcome, {{ user_name }}! 👋</h2>
           <p class="text-muted mb-0">Role: {{ user_role }}</p>
         </div>
-        <div class="text-end">
-          {% if is_student %}
-             <span class="badge bg-light text-dark border px-3 py-2">Total Courses: {{ total_courses }}</span>
-          {% endif %}
-        </div>
       </div>
-
       <hr class="mb-4">
 
       {% if is_student %}
       
-      <div class="row mb-4">
-        <div class="col-md-6">
-          <div class="card shadow-sm border-start border-primary border-4 h-100">
-            <div class="card-body">
-              <h6 class="card-title text-muted text-uppercase small">Overall PO Mastery</h6>
-              <div class="d-flex align-items-center">
-                  <h1 class="display-6 fw-bold mb-0 me-3">
-                    {% if average_po_score and average_po_score != "N/A" %}
-                        {{ average_po_score }}%
-                    {% else %}
-                        0.00%
-                    {% endif %}
-                  </h1>
-                  <i class="bi bi-graph-up-arrow fs-1 text-primary opacity-25 ms-auto"></i>
-              </div>
-            </div>
+          {% include "grades/student_content.html" %}
+      
+      {% else %}
+          
+          <div class="alert alert-info">
+              This dashboard is currently optimized for Students.
           </div>
-        </div>
-
-        <div class="col-md-6">
-          <div class="card shadow-sm border-start border-success border-4 h-100">
-            <div class="card-body">
-              <h6 class="card-title text-muted text-uppercase small">Active Enrollments</h6>
-              <div class="d-flex align-items-center">
-                  <h1 class="display-6 fw-bold mb-0 me-3">{{ total_courses }}</h1>
-                  <i class="bi bi-book fs-1 text-success opacity-25 ms-auto"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card shadow-lg border-0">
-        <div class="card-header bg-dark text-white d-flex align-items-center">
-            <i class="bi bi-bar-chart-steps me-2"></i>
-            <h5 class="mb-0">Synergy Analyzer: PO Completion Percentages</h5>
+      
+      {% endif %}
+      </main>
+  </div>
+</div>
+{% endblock content %}
