@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import Course, Assessment, CourseSection, CourseMaterial
 
-class AssessmentInline(admin.TabularInline):
+class AssessmentInline(admin.StackedInline):
     model = Assessment
     extra = 1
     filter_horizontal = ('learning_outcomes',) 

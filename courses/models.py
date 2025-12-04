@@ -31,16 +31,14 @@ class Course(models.Model):
 
     instructor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
+        on_delete=models.SET_NULL, # Hoca silinirse ders silinmesin, boş kalsın
         null=True,
         blank=True,
-        limit_choices_to={'is_teacher': True},
         related_name='instructed_courses',
-        verbose_name='Instructor'
+        verbose_name="Instructor",
+        limit_choices_to={'role': 'INSTRUCTOR'} 
     )
 
-
-# --- 2. Assessment Model ---
 class Assessment(models.Model):
     ASSESSMENT_TYPES = [
         ('MIDTERM', 'Midterm'), 
