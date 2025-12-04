@@ -145,3 +145,42 @@ class CourseMaterial(models.Model):
 
     def __str__(self):
         return self.title
+    
+
+
+class CourseSection(models.Model):
+    """
+    Dersin bölümlerini temsil eder (Örn: Genel, Hafta 1, Hafta 2).
+    Ekran görüntüsündeki sol menüdeki başlıklar.
+    """
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sections')
+    title = models.CharField(max_length=200, verbose_name="Section Title") # Örn: Week 1
+    order = models.PositiveIntegerField(default=0) # Sıralama için
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return f"{self.course.code} - {self.title}"
+
+class CourseMaterial(models.Model):
+    """
+    Her bölümün içindeki materyaller (Slayt, Link, Duyuru).
+    """
+    MATERIAL_TYPES = [
+        ('SLIDE', 'Slide/File'),
+        ('LINK', 'Link/URL'),
+        ('ANNOUNCEMENT', 'Announcement'),
+    ]
+    
+    section = models.ForeignKey(CourseSection, on_delete=models.CASCADE, related_name='materials')
+    title = models.CharField(max_length=200)
+    type = models.CharField(max_length=20, choices=MATERIAL_TYPES, default='SLIDE')
+    # Dosya yükleme (FileField) için settings ayarı gerekir, şimdilik basit tutalım:
+    link = models.URLField(blank=True, null=True, verbose_name="Link (if applicable)")
+    
+    class Meta:
+        verbose_name = "Course Material"
+
+    def __str__(self):
+        return self.title
