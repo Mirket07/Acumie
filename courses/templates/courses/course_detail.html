@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ course.code }} - Detail{% endblock %}
+{% block title %}{{ course.code }} - {{ course.title }}{% endblock %}
 
 {% block content %}
 
@@ -9,7 +9,24 @@
         <div class="container">
             <span class="badge bg-success mb-2">ECTS: {{ course.ects_credit }}</span>
             <h1 class="display-5 fw-bold">{{ course.code }} - {{ course.title }}</h1>
-            <p class="fs-5 opacity-75"><i class="bi bi-person-circle"></i> Instructor information will be here</p>
+            <p class="lead mb-0"><i class="bi bi-person-circle"></i> {{ course.instructor.get_full_name|default:"Instructor Name" }}</p>
+        </div>
+    </div>
+    
+    <div class="bg-light border-bottom shadow-sm">
+        <div class="container">
+            <ul class="nav nav-tabs border-bottom-0" id="courseTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active py-3 px-4 text-dark fw-bold" id="course-tab" data-bs-toggle="tab" data-bs-target="#course-content" type="button" role="tab" aria-controls="course-content" aria-selected="true">
+                        <i class="bi bi-journal-richtext me-2"></i> Kurs (Materials)
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link py-3 px-4 text-dark" id="grades-tab" data-bs-toggle="tab" data-bs-target="#grades-content" type="button" role="tab" aria-controls="grades-content" aria-selected="false">
+                        <i class="bi bi-trophy me-2"></i> Notlar (Grades)
+                    </button>
+                </li>
+            </ul>
         </div>
     </div>
 </div>
@@ -17,90 +34,147 @@
 <div class="container mt-4">
     <div class="row">
         
-        <div class="col-md-3">
-            <div class="card shadow-sm mb-4">
+        <div class="col-md-3 d-none d-md-block">
+            <div class="card shadow-sm sticky-top" style="top: 20px; z-index: 1;">
                 <div class="card-header bg-white fw-bold">
                     <i class="bi bi-list"></i> Course Menu
                 </div>
-                
-                <div class="accordion accordion-flush" id="courseAccordion">
-                    {% for section in sections %}
-                    <div class="accordion-item">
-                        <h2 class="accordion-header" id="heading{{ section.id }}">
-                            <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ section.id }}">
-                                {{ section.title }}
-                            </button>
-                        </h2>
-                        <div id="collapse{{ section.id }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" data-bs-parent="#courseAccordion">
-                            <div class="accordion-body p-0">
-                                <div class="list-group list-group-flush">
-                                    {% for material in section.materials.all %}
-                                        <a href="{{ material.link|default:'#' }}" target="_blank" class="list-group-item list-group-item-action small border-0">
-                                            {% if material.type == 'SLIDE' %}
-                                                <i class="bi bi-file-earmark-slides text-danger me-2"></i>
-                                            {% elif material.type == 'LINK' %}
-                                                <i class="bi bi-link-45deg text-primary me-2"></i>
-                                            {% else %}
-                                                <i class="bi bi-megaphone text-warning me-2"></i>
-                                            {% endif %}
-                                            {{ material.title }}
-                                        </a>
-                                    {% empty %}
-                                        <div class="p-3 text-muted small fst-italic">Empty section</div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% empty %}
-                        <div class="p-3 text-center text-muted">No sections found.</div>
-                    {% endfor %}
+                <div class="list-group list-group-flush">
+                    <a href="#course-content" class="list-group-item list-group-item-action" onclick="document.getElementById('course-tab').click()">
+                        <i class="bi bi-journal-text me-2 text-primary"></i> Course Materials
+                    </a>
+                    <a href="#grades-content" class="list-group-item list-group-item-action" onclick="document.getElementById('grades-tab').click()">
+                        <i class="bi bi-award me-2 text-success"></i> My Grades
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action disabled">
+                        <i class="bi bi-people me-2"></i> Participants (Soon)
+                    </a>
                 </div>
             </div>
         </div>
 
         <div class="col-md-9">
             
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-trophy"></i> My Grades</h5>
-                </div>
-                <div class="card-body p-0">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Assessment</th>
-                                <th class="text-end">Score</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for grade in student_grades %}
-                            <tr>
-                                <td>
-                                    <strong>{{ grade.assessment.get_type_display }}</strong><br>
-                                    </td>
-                                <td class="text-end">
-                                    <span class="badge bg-primary fs-6">{{ grade.score_percentage }}%</span>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="2" class="text-center text-muted py-4">
-                                    <i class="bi bi-clipboard-x fs-3 d-block mb-2"></i>
-                                    No grades recorded for this course yet.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <div class="tab-content" id="courseTabsContent">
+                
+                <div class="tab-pane fade show active" id="course-content" role="tabpanel" aria-labelledby="course-tab">
+                    
+                    <div class="alert alert-light border shadow-sm mb-4">
+                        <h4 class="alert-heading text-primary"><i class="bi bi-info-circle"></i> Genel Bilgi</h4>
+                        <p>Welcome to <strong>{{ course.code }}</strong>. Here you can find all the weekly materials, slides, and announcements.</p>
+                    </div>
 
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle-fill me-2"></i> Select a material from the left menu to view content.
-            </div>
+                    <div class="accordion" id="courseAccordion">
+                        {% for section in sections %}
+                        <div class="accordion-item mb-3 border shadow-sm rounded overflow-hidden">
+                            <h2 class="accordion-header" id="heading{{ section.id }}">
+                                <button class="accordion-button fw-bold {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ section.id }}" aria-expanded="true">
+                                    {{ section.title }}
+                                </button>
+                            </h2>
+                            <div id="collapse{{ section.id }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" data-bs-parent="#courseAccordion">
+                                <div class="accordion-body bg-light">
+                                    <div class="list-group">
+                                        {% for material in section.materials.all %}
+                                            <a href="{{ material.link|default:'#' }}" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center">
+                                                <div class="me-3 fs-4">
+                                                    {% if material.type == 'SLIDE' %}
+                                                        <i class="bi bi-file-earmark-slides text-danger"></i>
+                                                    {% elif material.type == 'LINK' %}
+                                                        <i class="bi bi-link-45deg text-primary"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-megaphone text-warning"></i>
+                                                    {% endif %}
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-0">{{ material.title }}</h6>
+                                                    <small class="text-muted">{{ material.get_type_display }}</small>
+                                                </div>
+                                            </a>
+                                        {% empty %}
+                                            <div class="text-muted fst-italic p-2">No materials added yet.</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                            <div class="alert alert-info">No sections found for this course.</div>
+                        {% endfor %}
+                    </div>
+                </div>
 
+                <div class="tab-pane fade" id="grades-content" role="tabpanel" aria-labelledby="grades-tab">
+                    
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white border-bottom">
+                            <h5 class="mb-0 text-success"><i class="bi bi-clipboard-data"></i> My Grades Report</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 40%;">Assessment Item</th>
+                                        <th style="width: 20%;">Type</th>
+                                        <th style="width: 20%;">Score</th>
+                                        <th style="width: 20%;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for grade in student_grades %}
+                                    <tr>
+                                        <td>
+                                            <div class="fw-bold">{{ grade.assessment.get_type_display }}</div>
+                                            <small class="text-muted">Weight: {{ grade.assessment.weight_percentage }}%</small>
+                                        </td>
+                                        <td><span class="badge bg-secondary">{{ grade.assessment.type }}</span></td>
+                                        <td>
+                                            <h5 class="mb-0 fw-bold {% if grade.score_percentage >= 50 %}text-success{% else %}text-danger{% endif %}">
+                                                {{ grade.score_percentage }}%
+                                            </h5>
+                                        </td>
+                                        <td>
+                                            {% if grade.score_percentage >= 85 %}
+                                                <i class="bi bi-star-fill text-warning"></i> Excellent
+                                            {% elif grade.score_percentage >= 50 %}
+                                                <i class="bi bi-check-circle-fill text-success"></i> Passed
+                                            {% else %}
+                                                <i class="bi bi-x-circle-fill text-danger"></i> Failed
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-5 text-muted">
+                                            <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                                            No grades recorded for this course yet.
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
         </div>
     </div>
 </div>
+
+<script>
+    
+    document.addEventListener("DOMContentLoaded", function() {
+        var hash = window.location.hash;
+        if (hash) {
+            var triggerEl = document.querySelector('button[data-bs-target="' + hash + '"]');
+            if (triggerEl) {
+                var tab = new bootstrap.Tab(triggerEl);
+                tab.show();
+            }
+        }
+    });
+</script>
+
 {% endblock content %}
