@@ -108,80 +108,37 @@
                     
                     <div class="card shadow-sm border-0">
                         <div class="card-header bg-white border-bottom">
-                            <h5 class="mb-0 text-success"><i class="bi bi-clipboard-data"></i> My Grades Report</h5>
+                            <h5 class="mb-0 text-success"><i class="bi bi-clipboard-data"></i> Grade Report</h5>
                         </div>
                         <div class="card-body p-0">
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
+                                        {% if is_instructor %}
+                                            <th style="width: 20%;">Student</th>
+                                        {% endif %}
+                                        
                                         <th style="width: 30%;">Assessment Item</th>
                                         <th style="width: 15%;">Type</th>
-                                        <th style="width: 15%;">Score</th>
+                                        <th style="width: 10%;">Score</th>
                                         <th style="width: 15%;">Status</th>
-                                        <th style="width: 25%;">Feedback</th> </tr>
+                                        
+                                        {% if not is_instructor %}
+                                            <th style="width: 20%;">Feedback</th>
+                                        {% endif %}
+                                    </tr>
                                 </thead>
                                 <tbody>
                                     {% for grade in student_grades %}
                                     <tr>
+                                        {% if is_instructor %}
+                                            <td class="fw-bold text-primary">
+                                                {{ grade.student.get_full_name|default:grade.student.username }}
+                                            </td>
+                                        {% endif %}
+
                                         <td>
                                             <div class="fw-bold">{{ grade.assessment.get_type_display }}</div>
                                             <small class="text-muted">Weight: {{ grade.assessment.weight_percentage }}%</small>
                                         </td>
                                         <td><span class="badge bg-secondary">{{ grade.assessment.type }}</span></td>
-                                        <td>
-                                            <h5 class="mb-0 fw-bold {% if grade.score_percentage >= 50 %}text-success{% else %}text-danger{% endif %}">
-                                                {{ grade.score_percentage }}%
-                                            </h5>
-                                        </td>
-                                        <td>
-                                            {% if grade.score_percentage >= 85 %}
-                                                <i class="bi bi-star-fill text-warning"></i> Excellent
-                                            {% elif grade.score_percentage >= 50 %}
-                                                <i class="bi bi-check-circle-fill text-success"></i> Passed
-                                            {% else %}
-                                                <i class="bi bi-x-circle-fill text-danger"></i> Failed
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <form action="{% url 'feedback:request_feedback' grade.assessment.id %}" method="post">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-chat-text"></i> Request Feedback
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr>
-                                        <td colspan="5" class="text-center py-5 text-muted">
-                                            <i class="bi bi-inbox fs-1 d-block mb-3"></i>
-                                            No grades recorded for this course yet.
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                </div>
-
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var hash = window.location.hash;
-        if (hash) {
-            var triggerEl = document.querySelector('button[data-bs-target="' + hash + '"]');
-            if (triggerEl) {
-                var tab = new bootstrap.Tab(triggerEl);
-                tab.show();
-            }
-        }
-    });
-</script>
-
-{% endblock content %}
