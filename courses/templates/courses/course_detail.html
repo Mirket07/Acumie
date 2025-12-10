@@ -129,16 +129,38 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for grade in student_grades %}
-                                    <tr>
-                                        {% if is_instructor %}
-                                            <td class="fw-bold text-primary">
-                                                {{ grade.student.get_full_name|default:grade.student.username }}
-                                            </td>
-                                        {% endif %}
+                                    {% if student_grades %}
+                                        {% for grade in student_grades %}
+                                            <tr>
+                                                {% if is_instructor %}
+                                                    <td class="fw-bold text-primary">
+                                                {{ grade.student.get_full_name|default:grade.student.username }}</td>
+                                                {% endif %}
 
-                                        <td>
-                                            <div class="fw-bold">{{ grade.assessment.get_type_display }}</div>
-                                            <small class="text-muted">Weight: {{ grade.assessment.weight_percentage }}%</small>
-                                        </td>
-                                        <td><span class="badge bg-secondary">{{ grade.assessment.type }}</span></td>
+                                                <td>
+                                                    <div class="fw-bold">{{ grade.assessment.get_type_display }}</div>
+                                                    <small class="text-muted">Weight: {{ grade.assessment.weight_percentage }}%</small>
+                                                </td>
+                                                <td><span class="badge bg-secondary">{{ grade.assessment.type }}</span></td>
+                                                <td class="text-center">
+                                                    {{ grade.lo_mastery_score }}/5
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4 text-muted">
+                                                No grades available yet.
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
