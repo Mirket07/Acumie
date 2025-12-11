@@ -31,7 +31,7 @@ class Course(models.Model):
 
     instructor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL, # Hoca silinirse ders silinmesin, boş kalsın
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='instructed_courses',
@@ -150,13 +150,10 @@ class CourseMaterial(models.Model):
 
 
 class CourseSection(models.Model):
-    """
-    Dersin bölümlerini temsil eder (Örn: Genel, Hafta 1, Hafta 2).
-    Ekran görüntüsündeki sol menüdeki başlıklar.
-    """
+
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sections')
-    title = models.CharField(max_length=200, verbose_name="Section Title") # Örn: Week 1
-    order = models.PositiveIntegerField(default=0) # Sıralama için
+    title = models.CharField(max_length=200, verbose_name="Section Title") 
+    order = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['order']
@@ -165,9 +162,6 @@ class CourseSection(models.Model):
         return f"{self.course.code} - {self.title}"
 
 class CourseMaterial(models.Model):
-    """
-    Her bölümün içindeki materyaller (Slayt, Link, Duyuru).
-    """
     MATERIAL_TYPES = [
         ('SLIDE', 'Slide/File'),
         ('LINK', 'Link/URL'),
@@ -177,7 +171,6 @@ class CourseMaterial(models.Model):
     section = models.ForeignKey(CourseSection, on_delete=models.CASCADE, related_name='materials')
     title = models.CharField(max_length=200)
     type = models.CharField(max_length=20, choices=MATERIAL_TYPES, default='SLIDE')
-    # Dosya yükleme (FileField) için settings ayarı gerekir, şimdilik basit tutalım:
     link = models.URLField(blank=True, null=True, verbose_name="Link (if applicable)")
     
     class Meta:
