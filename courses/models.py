@@ -72,7 +72,8 @@ class Assessment(models.Model):
     learning_outcomes = models.ManyToManyField(
         "outcomes.LearningOutcome",
         related_name='assessments',
-        verbose_name="Associated Learning Outcomes (LOs)" 
+        verbose_name="Associated Learning Outcomes (LOs)" ,
+        blank=True
     )
 
     class Meta:

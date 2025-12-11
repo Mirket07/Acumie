@@ -29,7 +29,8 @@ class LearningOutcome(models.Model):
         ProgramOutcome,
         through='LO_PO_Contribution',
         related_name='learning_outcomes',
-        verbose_name="Linked POs"
+        verbose_name="Linked POs",
+        blank=True
     )
 
     class Meta:
