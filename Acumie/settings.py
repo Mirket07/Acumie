@@ -12,6 +12,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 
+
+GRADE_CSV_MAX_BYTES = 5 * 1024 * 1024
+GRADE_CSV_ALLOWED_EXT = ('.csv',)
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -39,7 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'accounts',
     'courses',
-    'grades',
+    'grades.apps.GradesConfig',
     'outcomes',
     'reports',
     'feedback',

@@ -3,41 +3,86 @@ import csv
 import io
 from decimal import Decimal
 from typing import List, Tuple
+from functools import wraps
 
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import user_passes_test, login_required
+from django.contrib.auth.decorators import login_required
 from django.forms import modelformset_factory
 from django.db import transaction, DatabaseError
 from django.contrib import messages
 from django.urls import reverse
+from django.conf import settings
+from django.http import HttpResponseForbidden
+from django.core.exceptions import PermissionDenied
+from django.contrib.auth.views import redirect_to_login
 
 from .models import Grade
 from courses.models import Course, Assessment, Enrollment
 from outcomes.models import LearningOutcome
 
-# --- define names on all code paths for static analysis ---
+
+
 GradeForm = None
 GradeFormSet = None
 try:
-    # import into these names directly (no temporary aliases)
     from .forms import GradeForm, GradeFormSet
 except ImportError:
     GradeForm = None
     GradeFormSet = None
 
 
-def teacher_required(user) -> bool:
-    """Return True for active users flagged as teacher or staff."""
-    return user.is_active and (getattr(user, "is_teacher", False) or user.is_staff)
+DEFAULT_MAX_UPLOAD_BYTES = getattr(settings, "GRADE_CSV_MAX_BYTES", 5 * 1024 * 1024)
+ALLOWED_UPLOAD_EXTENSIONS = getattr(settings, "GRADE_CSV_ALLOWED_EXT", (".csv",))
 
 
-teacher_decorator = user_passes_test(teacher_required)
+# CHANGED: new decorator factory that allows staff/superuser OR users with the permission.
+def permission_or_staff_required(perm_codename: str):
+    """
+    Decorator factory: allow if user is staff/superuser OR has given perm OR has is_teacher flag.
+    Redirects anonymous users to login, raises PermissionDenied (403) for authenticated users
+    without permission.
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def _wrapped(request, *args, **kwargs):
+            user = request.user
+            if not user.is_authenticated:
+                return redirect_to_login(request.get_full_path())
+            # Allow superuser / staff
+            if user.is_superuser or user.is_staff:
+                return view_func(request, *args, **kwargs)
+            # Allow if explicit permission or legacy is_teacher boolean
+            if user.has_perm(perm_codename) or getattr(user, "is_teacher", False):
+                return view_func(request, *args, **kwargs)
+            # Otherwise deny
+            raise PermissionDenied
+        return _wrapped
+    return decorator
 
 
-@teacher_decorator
+# helper: course ownership check (keeps previous logic)
+def _user_can_manage_course(user, course: Course) -> bool:
+    if user.is_staff or user.is_superuser:
+        return True
+    if hasattr(course, 'instructor') and getattr(course, 'instructor') is not None:
+        try:
+            return course.instructor.id == user.id
+        except Exception:
+            return False
+    # fallback: allow users with the is_teacher flag
+    return getattr(user, 'is_teacher', False)
+
+
+# Apply the new decorator: requires 'grades.can_grade' OR staff/superuser OR is_teacher
+CAN_GRADE_DECORATOR = permission_or_staff_required('grades.can_grade')
+
+
+@CAN_GRADE_DECORATOR
 @login_required
 def teacher_select_assessment(request, course_id: int):
     course = get_object_or_404(Course, pk=course_id)
+    if not _user_can_manage_course(request.user, course):
+        return HttpResponseForbidden("You do not have permission to manage this course.")
     assessments = course.assessments.all().order_by('type')
     return render(request, 'grades/teacher/select_assessment.html', {
         'course': course,
@@ -45,24 +90,23 @@ def teacher_select_assessment(request, course_id: int):
     })
 
 
-@teacher_decorator
+@CAN_GRADE_DECORATOR
 @login_required
 def teacher_grade_entry(request, course_id: int):
     course = get_object_or_404(Course, pk=course_id)
+    if not _user_can_manage_course(request.user, course):
+        return HttpResponseForbidden("You do not have permission to manage this course.")
     assessment_id = request.GET.get('assessment')
     if not assessment_id:
         return redirect(reverse('grades:teacher_select_assessment', args=[course_id]))
 
     assessment = get_object_or_404(Assessment, pk=assessment_id, course=course)
 
-    # Get enrolled students
     enrolled_qs = Enrollment.objects.filter(course=course).select_related('student')
     students = [e.student for e in enrolled_qs]
 
-    # LOs related to this assessment
     los = list(assessment.learning_outcomes.all())
 
-    # Pre-create missing Grade rows (student x assessment x lo)
     created_count = 0
     try:
         with transaction.atomic():
@@ -80,13 +124,10 @@ def teacher_grade_entry(request, course_id: int):
         messages.error(request, f"Database error preparing grade rows: {db_err}")
         created_count = 0
 
-    # Queryset for the formset
     qs = Grade.objects.filter(assessment=assessment, student__in=students).order_by('student__username', 'learning_outcome__code')
 
-    # Determine which GradeFormSet to use
     grade_formset_class = GradeFormSet
     if grade_formset_class is None:
-        # fallback: only edit score_percentage and lo_mastery_score
         grade_formset_class = modelformset_factory(Grade, fields=('score_percentage', 'lo_mastery_score'), extra=0)
 
     if request.method == 'POST':
@@ -94,11 +135,41 @@ def teacher_grade_entry(request, course_id: int):
         if formset.is_valid():
             try:
                 with transaction.atomic():
-                    formset.save()
-                messages.success(request, "Grades saved successfully.")
+                    saved_any = False
+                    for form in formset:
+                        if not form.has_changed():
+                            continue
+                        inst = form.save(commit=False)
+                        try:
+                            score_val = Decimal(inst.score_percentage)
+                        except Exception:
+                            messages.error(request, f"Invalid score value for {inst.student}. Must be numeric 0-100.")
+                            raise
+                        if score_val < 0 or score_val > 100:
+                            messages.error(request, f"Score out of range (0-100) for {inst.student}.")
+                            raise ValueError("score out of range")
+
+                        try:
+                            mastery_val = int(inst.lo_mastery_score)
+                        except Exception:
+                            messages.error(request, f"Invalid mastery value for {inst.student}. Must be integer 1-5.")
+                            raise
+                        if mastery_val < 1 or mastery_val > 5:
+                            messages.error(request, f"Mastery out of range (1-5) for {inst.student}.")
+                            raise ValueError("mastery out of range")
+
+                        inst._changed_by = request.user
+                        inst.save()
+                        saved_any = True
+                    if saved_any:
+                        messages.success(request, "Grades updated successfully.")
+                    else:
+                        messages.info(request, "No changes detected.")
                 return redirect(f"{reverse('grades:teacher_grade_entry', args=[course_id])}?assessment={assessment.id}")
             except DatabaseError as db_err:
                 messages.error(request, f"Database error saving grades: {db_err}")
+            except ValueError:
+                pass
         else:
             messages.error(request, "There are validation errors. Please fix them and submit again.")
     else:
@@ -114,10 +185,12 @@ def teacher_grade_entry(request, course_id: int):
     })
 
 
-@teacher_decorator
+@CAN_GRADE_DECORATOR
 @login_required
 def teacher_grade_bulk_upload(request, course_id: int):
     course = get_object_or_404(Course, pk=course_id)
+    if not _user_can_manage_course(request.user, course):
+        return HttpResponseForbidden("You do not have permission to manage this course.")
 
     if request.method == 'POST':
         csvfile = request.FILES.get('csv_file')
@@ -125,7 +198,16 @@ def teacher_grade_bulk_upload(request, course_id: int):
             messages.error(request, "No file uploaded.")
             return redirect(request.path)
 
-        # Try UTF-8, fall back to latin-1 if necessary
+        filename = csvfile.name or ""
+        if not any(filename.lower().endswith(ext) for ext in ALLOWED_UPLOAD_EXTENSIONS):
+            messages.error(request, f"Invalid file extension. Allowed: {', '.join(ALLOWED_UPLOAD_EXTENSIONS)}")
+            return redirect(request.path)
+
+        max_bytes = DEFAULT_MAX_UPLOAD_BYTES
+        if csvfile.size and csvfile.size > max_bytes:
+            messages.error(request, f"File too large. Max allowed size is {max_bytes} bytes.")
+            return redirect(request.path)
+
         try:
             data = csvfile.read().decode('utf-8')
         except UnicodeDecodeError:
@@ -153,7 +235,6 @@ def teacher_grade_bulk_upload(request, course_id: int):
                         errors.append((line_no, "Missing required column(s)"))
                         continue
 
-                    # find student
                     from django.contrib.auth import get_user_model
                     User = get_user_model()
                     try:
@@ -162,7 +243,6 @@ def teacher_grade_bulk_upload(request, course_id: int):
                         errors.append((line_no, f"Student '{student_username}' not found"))
                         continue
 
-                    # find assessment (prefer id)
                     assessment_obj = None
                     if assessment_field.isdigit():
                         assessment_obj = Assessment.objects.filter(pk=int(assessment_field), course=course).first()
@@ -175,34 +255,45 @@ def teacher_grade_bulk_upload(request, course_id: int):
 
                     last_assessment = assessment_obj
 
-                    # find LO
                     lo_obj = LearningOutcome.objects.filter(code=lo_code).first()
                     if lo_obj is None:
                         errors.append((line_no, f"Learning outcome '{lo_code}' not found"))
                         continue
+                    if not assessment_obj.learning_outcomes.filter(pk=lo_obj.pk).exists():
+                        errors.append((line_no, f"LO '{lo_code}' is not linked to assessment '{assessment_obj.id}'."))
+                        continue
 
-                    # parse numeric values
                     try:
                         score_decimal = Decimal(score_str)
+                        if score_decimal < 0 or score_decimal > 100:
+                            raise ValueError("score out of range")
                         mastery_int = int(mastery_str)
+                        if mastery_int < 1 or mastery_int > 5:
+                            raise ValueError("mastery out of range")
                     except (ArithmeticError, ValueError) as parse_err:
                         errors.append((line_no, f"Invalid numeric value: {parse_err}"))
                         continue
 
-                    # update or create grade row
-                    Grade.objects.update_or_create(
+                    obj, created = Grade.objects.update_or_create(
                         student=student,
                         assessment=assessment_obj,
                         learning_outcome=lo_obj,
                         defaults={'score_percentage': score_decimal, 'lo_mastery_score': mastery_int}
                     )
+
+                    try:
+                        obj._changed_by = request.user
+                        obj.save(update_fields=['score_percentage', 'lo_mastery_score'])
+                    except Exception:
+                        errors.append((line_no, "Failed to save grade after update_or_create"))
+                        continue
+
                     success_count += 1
 
         except DatabaseError as db_err:
             messages.error(request, f"Database error during upload: {db_err}")
             return redirect(request.path)
 
-        # Show results to user
         if errors:
             for ln, err in errors[:20]:
                 messages.error(request, f"Line {ln}: {err}")
@@ -210,10 +301,8 @@ def teacher_grade_bulk_upload(request, course_id: int):
         else:
             messages.success(request, f"Successfully imported {success_count} rows.")
 
-        # Redirect to grade entry for the last processed assessment if available
         if last_assessment:
             return redirect(reverse('grades:teacher_grade_entry', args=[course_id]) + f'?assessment={last_assessment.id}')
         return redirect(reverse('grades:teacher_select_assessment', args=[course_id]))
 
-    # GET: show upload form
     return render(request, 'grades/teacher/bulk_upload.html', {'course': course})
