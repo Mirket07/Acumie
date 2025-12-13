@@ -4,6 +4,8 @@
 
 {% block content %}
 
+<div id="alert-container" class="container mt-3" style="position: fixed; top: 70px; right: 20px; z-index: 9999; max-width: 400px;"></div>
+
 <div class="container-fluid p-0 mb-4">
     <div class="p-5 text-white bg-dark" style="background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);">
         <div class="container">
@@ -58,7 +60,6 @@
             <div class="tab-content" id="courseTabsContent">
                 
                 <div class="tab-pane fade show active" id="course-content" role="tabpanel" aria-labelledby="course-tab">
-                    
                     <div class="alert alert-light border shadow-sm mb-4">
                         <h4 class="alert-heading text-primary"><i class="bi bi-info-circle"></i> General Info </h4>
                         <p>Welcome to <strong>{{ course.code }}</strong>. Here you can find all the weekly materials, slides, and announcements.</p>
@@ -105,7 +106,6 @@
                 </div>
 
                 <div class="tab-pane fade" id="grades-content" role="tabpanel" aria-labelledby="grades-tab">
-                    
                     <div class="card shadow-sm border-0">
                         <div class="card-header bg-white border-bottom">
                             <h5 class="mb-0 text-success"><i class="bi bi-clipboard-data"></i> Grade Report</h5>
@@ -115,16 +115,16 @@
                                 <thead class="table-light">
                                     <tr>
                                         {% if is_instructor %}
-                                            <th style="width: 20%;">Student</th>
+                                            <th>Student</th>
                                         {% endif %}
                                         
-                                        <th style="width: 30%;">Assessment Item</th>
-                                        <th style="width: 15%;">Type</th>
-                                        <th style="width: 10%;">Score</th>
-                                        <th style="width: 15%;">Status</th>
+                                        <th>Assessment Item</th>
+                                        <th class="text-center">Type</th>
+                                        <th class="text-center">Score</th>
+                                        <th class="text-center">Status</th>
                                         
                                         {% if not is_instructor %}
-                                            <th style="width: 20%;">Feedback</th>
+                                            <th class="text-center">Feedback</th>
                                         {% endif %}
                                     </tr>
                                 </thead>
@@ -134,17 +134,43 @@
                                             <tr>
                                                 {% if is_instructor %}
                                                     <td class="fw-bold text-primary">
-                                                {{ grade.student.get_full_name|default:grade.student.username }}</td>
+                                                        {{ grade.student.get_full_name|default:grade.student.username }}
+                                                    </td>
                                                 {% endif %}
 
                                                 <td>
                                                     <div class="fw-bold">{{ grade.assessment.get_type_display }}</div>
                                                     <small class="text-muted">Weight: {{ grade.assessment.weight_percentage }}%</small>
                                                 </td>
-                                                <td><span class="badge bg-secondary">{{ grade.assessment.type }}</span></td>
+                                                
                                                 <td class="text-center">
+                                                    <span class="badge bg-secondary">{{ grade.assessment.type }}</span>
+                                                </td>
+                                                
+                                                <td class="text-center fw-bold">
                                                     {{ grade.score_percentage }}
                                                 </td>
+                                                
+                                                <td class="text-center">
+                                                    <span class="text-muted">-</span>
+                                                </td>
+
+                                                {% if not is_instructor %}
+                                                    <td class="text-center">
+                                                        {% if grade.assessment.id in requested_assessment_ids %}
+                                                            <button class="btn btn-sm btn-secondary" disabled>
+                                                                <i class="bi bi-check-circle"></i> Requested
+                                                            </button>
+                                                        {% else %}
+                                                            <button class="btn btn-sm btn-outline-warning request-btn"
+                                                                    data-url="{% url 'feedback:request_feedback' grade.assessment.id %}"
+                                                                    onclick="sendFeedbackRequest(this)">
+                                                                Request
+                                                            </button>
+                                                        {% endif %}
+                                                    </td>
+                                                {% endif %}
+
                                             </tr>
                                         {% endfor %}
                                     {% else %}
@@ -163,4 +189,64 @@
         </div>
     </div>
 </div>
+
+<script>
+function sendFeedbackRequest(btn) {
+    const url = btn.getAttribute('data-url');
+    
+    // Basıldığında butonu pasif yap
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...';
+
+    fetch(url)
+    .then(response => response.json())
+    .then(data => {
+        const alertContainer = document.getElementById('alert-container');
+        
+        if (data.status === 'success') {
+            // Butonu kalıcı olarak değiştir
+            btn.className = 'btn btn-sm btn-secondary';
+            btn.innerHTML = '<i class="bi bi-check-circle"></i> Requested';
+            
+            // Yeşil mesaj göster
+            alertContainer.innerHTML = `
+                <div class="alert alert-success alert-dismissible fade show shadow" role="alert">
+                    <i class="bi bi-check-circle-fill me-2"></i> ${data.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+        } else {
+            // Hata varsa butonu eski haline getir
+            btn.disabled = false;
+            btn.innerHTML = 'Request';
+            btn.className = 'btn btn-sm btn-outline-warning request-btn';
+            
+            // Sarı/Kırmızı mesaj göster
+            alertContainer.innerHTML = `
+                <div class="alert alert-warning alert-dismissible fade show shadow" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> ${data.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+        }
+
+        // Mesajı 3 saniye sonra otomatik gizle
+        setTimeout(() => {
+            const alertElement = alertContainer.querySelector('.alert');
+            if(alertElement) {
+                // Bootstrap 5 ile uyumlu kapatma yöntemi
+                const bsAlert = new bootstrap.Alert(alertElement);
+                bsAlert.close();
+            }
+        }, 3000);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        btn.disabled = false;
+        btn.innerHTML = 'Request';
+        alert('An error occurred. Please try again.');
+    });
+}
+</script>
+
 {% endblock %}
