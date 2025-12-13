@@ -11,11 +11,10 @@ class Feedback(models.Model):
         blank=True,
         verbose_name="Related Course"
     )
-    feedback_text = models.TextField(
-        verbose_name="Feedback Content"
-    )
+    feedback_text = models.TextField(verbose_name="Feedback Content")
     created_at = models.DateTimeField(auto_now_add=True)
-    
+    likes_count = models.PositiveIntegerField(default=0)
+
     class Meta:
         verbose_name = "Whisper Box Feedback"
         verbose_name_plural = "Whisper Box Feedbacks"
@@ -50,3 +49,20 @@ class FeedbackRequest(models.Model):
             full_name = self.student.username
             
         return f"{full_name} requested feedback for {self.assessment.course.code} - {self.assessment.get_type_display()}"
+
+class FeedbackLike(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    feedback = models.ForeignKey(Feedback, on_delete=models.CASCADE, related_name='likes')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'feedback')
+
+class FeedbackComment(models.Model):
+    feedback = models.ForeignKey(Feedback, on_delete=models.CASCADE, related_name='comments')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    comment_text = models.TextField(verbose_name="Comment")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
