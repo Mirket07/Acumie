@@ -8,10 +8,6 @@ from .models import Grade, GradeAudit
 
 @receiver(pre_save, sender=Grade)
 def grade_pre_save(sender, instance: Grade, **kwargs):
-    """
-    Store a snapshot of the existing Grade (if any) on the instance so post_save
-    can compare old/new values. Stored as _pre_save_instance.
-    """
     if instance.pk:
         try:
             instance._pre_save_instance = Grade.objects.get(pk=instance.pk)
@@ -23,11 +19,6 @@ def grade_pre_save(sender, instance: Grade, **kwargs):
 
 @receiver(post_save, sender=Grade)
 def grade_post_save(sender, instance: Grade, created: bool, **kwargs):
-    """
-    Create an audit record whenever a Grade is created or updated.
-    - Uses instance._pre_save_instance (set in pre_save) to get old values.
-    - Uses instance._changed_by (set in your views) if available to record actor.
-    """
     pre = getattr(instance, "_pre_save_instance", None)
     changed_by = getattr(instance, "_changed_by", None)
 
@@ -45,16 +36,11 @@ def grade_post_save(sender, instance: Grade, created: bool, **kwargs):
             timestamp=timezone.now(),
         )
     except Exception:
-        # Avoid breaking main flow; optionally log this in production.
-        # import logging; logging.exception("Failed to create GradeAudit")
         pass
 
 
 @receiver(post_delete, sender=Grade)
 def grade_post_delete(sender, instance: Grade, **kwargs):
-    """
-    Create an audit record for deletions.
-    """
     try:
         GradeAudit.objects.create(
             grade=None,
@@ -69,5 +55,4 @@ def grade_post_delete(sender, instance: Grade, **kwargs):
             timestamp=timezone.now(),
         )
     except Exception:
-        # import logging; logging.exception("Failed to create GradeAudit on delete")
         pass

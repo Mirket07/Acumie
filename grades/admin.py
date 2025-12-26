@@ -16,7 +16,6 @@ class CourseFilter(admin.SimpleListFilter):
 
 @admin.register(Grade)
 class GradeAdmin(admin.ModelAdmin):
-    # DİKKAT: Burada artık sadece yeni modelde olan alanlar var
     list_display = (
         'student_username', 
         'course_code', 
