@@ -38,6 +38,7 @@ class LearningOutcomeAdmin(admin.ModelAdmin):
     list_display = ('code', 'title')
     search_fields = ('code', 'title')
     inlines = [LO_PO_ContributionInline]
+    exclude = ('code',)
 
 
 @admin.register(ProgramOutcome)

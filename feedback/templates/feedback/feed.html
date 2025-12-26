@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Whisper Box Feed{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm sticky-top" style="top: 80px;">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="bi bi-pencil-square"></i> Whisper Something</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="submit_feedback" value="1">
+                        
+                        <div class="mb-3">
+                            {{ form.course }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.feedback_text }}
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100 rounded-pill">
+                            <i class="bi bi-send"></i> Post Anonymously
+                        </button>
+                    </form>
+                    <small class="text-muted d-block mt-2 text-center" style="font-size: 0.8rem;">
+                        <i class="bi bi-shield-lock"></i> Your identity is hidden from everyone.
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-7">
+            
+            <h4 class="mb-4 text-muted"><i class="bi bi-collection"></i> Anonymous Feed</h4>
+
+            {% for item in feedbacks %}
+            <div class="card shadow-sm mb-3 border-0">
+                <div class="card-body">
+                    
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-secondary rounded-circle text-white d-flex justify-content-center align-items-center me-2" style="width: 40px; height: 40px;">
+                                <i class="bi bi-person-fill"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0 fw-bold">Anonymous Student</h6>
+                                <small class="text-muted">{{ item.created_at|timesince }} ago</small>
+                            </div>
+                        </div>
+                        {% if item.course %}
+                            <span class="badge bg-info text-dark rounded-pill">{{ item.course.code }}</span>
+                        {% else %}
+                            <span class="badge bg-light text-muted border rounded-pill">General</span>
+                        {% endif %}
+                    </div>
+
+                    <p class="card-text fs-5 mb-3">{{ item.feedback_text }}</p>
+
+                    <div class="d-flex justify-content-between align-items-center border-top pt-3">
+                        
+                        <button class="btn btn-sm like-btn {% if item.id in user_likes %}text-danger{% else %}text-muted{% endif %}" 
+                                data-id="{{ item.id }}" 
+                                onclick="toggleLike(this)">
+                            <i class="bi {% if item.id in user_likes %}bi-heart-fill{% else %}bi-heart{% endif %} me-1"></i>
+                            <span class="like-count fw-bold">{{ item.likes_count }}</span> Likes
+                        </button>
+
+                        <button class="btn btn-sm text-muted" type="button" data-bs-toggle="collapse" data-bs-target="#comments-{{ item.id }}">
+                            <i class="bi bi-chat-dots me-1"></i> {{ item.comments.count }} Comments
+                        </button>
+                    </div>
+
+                    <div class="collapse mt-3 bg-light p-3 rounded" id="comments-{{ item.id }}">
+                        
+                        {% for comment in item.comments.all %}
+                            <div class="d-flex mb-2">
+                                <i class="bi bi-chat-right-text text-muted me-2 mt-1"></i>
+                                <div>
+                                    <span class="fw-bold text-dark" style="font-size: 0.9rem;">Anon:</span>
+                                    <span class="text-secondary" style="font-size: 0.95rem;">{{ comment.comment_text }}</span>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <p class="text-muted small fst-italic">No comments yet. Be the first to whisper back!</p>
+                        {% endfor %}
+
+                        <form action="{% url 'feedback:add_comment' item.id %}" method="post" class="mt-3 d-flex">
+                            {% csrf_token %}
+                            <input type="text" name="comment_text" class="form-control form-control-sm me-2 rounded-pill" placeholder="Reply anonymously..." required>
+                            <button type="submit" class="btn btn-sm btn-dark rounded-circle">
+                                <i class="bi bi-send-fill"></i>
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-wind fs-1 d-block mb-3"></i>
+                <h4>It's quiet in here...</h4>
+                <p>Be the first to share your thoughts!</p>
+            </div>
+            {% endfor %}
+
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleLike(btn) {
+    const feedbackId = btn.getAttribute('data-id');
+    const url = "{% url 'feedback:toggle_like' 0 %}".replace('0', feedbackId);
+    const icon = btn.querySelector('i');
+    const countSpan = btn.querySelector('.like-count');
+    let currentCount = parseInt(countSpan.innerText);
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.status === 'success') {
+            countSpan.innerText = data.likes_count;
+            if(data.liked) {
+                btn.classList.remove('text-muted');
+                btn.classList.add('text-danger');
+                icon.classList.remove('bi-heart');
+                icon.classList.add('bi-heart-fill');
+            } else {
+                btn.classList.remove('text-danger');
+                btn.classList.add('text-muted');
+                icon.classList.remove('bi-heart-fill');
+                icon.classList.add('bi-heart');
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

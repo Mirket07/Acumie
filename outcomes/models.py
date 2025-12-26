@@ -21,7 +21,8 @@ class LearningOutcome(models.Model):
         related_name='learning_outcomes',
         verbose_name="Course"
     )
-    code = models.CharField(max_length=10, verbose_name="LO Code")
+
+    code = models.CharField(max_length=10, verbose_name="LO Code", blank=True)
     title = models.CharField(max_length=255, verbose_name="Title")
     description = models.TextField(blank=True, verbose_name="Description")
     
@@ -41,6 +42,25 @@ class LearningOutcome(models.Model):
 
     def __str__(self):
         return f"{self.course.code} / {self.code} - {self.title}"
+
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            counter = 1
+            while True:
+                candidate_code = f"LO-{counter}"
+
+                exists = LearningOutcome.objects.filter(
+                    course=self.course, 
+                    code=candidate_code
+                ).exclude(id=self.id).exists()
+                
+                if not exists:
+                    self.code = candidate_code
+                    break
+                counter += 1
+        
+        super().save(*args, **kwargs)
 
 class LO_PO_Contribution(models.Model):
     learning_outcome = models.ForeignKey(
