@@ -2,7 +2,9 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from courses.models import Course
 from .models import Report
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
 
 class ReportModelTest(TestCase):
     def setUp(self):

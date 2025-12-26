@@ -1,9 +1,9 @@
 from django.test import TestCase
-from outcomes.models import Outcome
+from outcomes.models import ProgramOutcome, LearningOutcome
 
 class OutcomeModelTest(TestCase):
     def setUp(self):
-        self.outcome = Outcome.objects.create(
+        self.outcome = ProgramOutcome.objects.create(
             title="Test Outcome",
             description="Sample description",
             score=90
@@ -26,4 +26,4 @@ class OutcomeModelTest(TestCase):
     def test_delete_outcome(self):
         pk = self.outcome.pk
         self.outcome.delete()
-        self.assertFalse(Outcome.objects.filter(pk=pk).exists())
+        self.assertFalse(ProgramOutcome.objects.filter(pk=pk).exists())

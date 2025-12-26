@@ -24,8 +24,9 @@ class FeedbackBaseSetup(TestCase):
         self.client = Client()
         
         self.course = Course.objects.create(
-            name="Test Course", 
-            code="CS101"
+            code="CSE321",
+            title="Software Engineering",
+            ects_credit=5
         )
         self.assessment = Assessment.objects.create(
             course=self.course, 
