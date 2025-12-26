@@ -1,4 +1,3 @@
-# grades/views_teacher.py
 import csv
 import io
 from decimal import Decimal
@@ -33,6 +32,22 @@ except ImportError:
 
 DEFAULT_MAX_UPLOAD_BYTES = getattr(settings, "GRADE_CSV_MAX_BYTES", 5 * 1024 * 1024)
 ALLOWED_UPLOAD_EXTENSIONS = getattr(settings, "GRADE_CSV_ALLOWED_EXT", (".csv",))
+
+
+@login_required
+def teacher_dashboard(request):
+    user = request.user
+    if not (getattr(user, "role", "") == "INSTRUCTOR" or user.is_staff):
+        return HttpResponseForbidden("You do not have permission to access this page.")
+
+    my_courses = Course.objects.filter(instructor=user).order_by("code")
+    total_courses = my_courses.count()
+
+    context = {
+        "my_courses": my_courses,
+        "total_courses": total_courses,
+    }
+    return render(request, "grades/teacher/dashboard.html", context)
 
 
 def permission_or_staff_required(perm_codename: str):
