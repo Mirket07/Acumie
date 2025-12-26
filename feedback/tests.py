@@ -28,10 +28,11 @@ class FeedbackBaseSetup(TestCase):
             title="Software Engineering",
             ects_credit=5
         )
+        # DÜZELTME: Assessment modeli için title kaldırıldı, weight_percentage eklendi.
         self.assessment = Assessment.objects.create(
             course=self.course, 
-            title="Midterm Exam", 
-            type='EXAM'
+            type='MIDTERM',
+            weight_percentage=30.0
         )
         
         self.feedback1 = Feedback.objects.create(
@@ -55,7 +56,7 @@ class FeedbackModelTest(FeedbackBaseSetup):
         feedback = Feedback.objects.get(id=self.feedback1.id)
         self.assertTrue(isinstance(feedback, Feedback))
         self.assertEqual(feedback.feedback_text, "Great course, needs more interaction.")
-        self.assertEqual(feedback.course.code, "CS101")
+        self.assertEqual(feedback.course.code, "CSE321")
         self.assertEqual(feedback.likes_count, 0)
 
     def test_feedback_request_unique_constraint(self):
