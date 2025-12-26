@@ -35,32 +35,22 @@ DEFAULT_MAX_UPLOAD_BYTES = getattr(settings, "GRADE_CSV_MAX_BYTES", 5 * 1024 * 1
 ALLOWED_UPLOAD_EXTENSIONS = getattr(settings, "GRADE_CSV_ALLOWED_EXT", (".csv",))
 
 
-# CHANGED: new decorator factory that allows staff/superuser OR users with the permission.
 def permission_or_staff_required(perm_codename: str):
-    """
-    Decorator factory: allow if user is staff/superuser OR has given perm OR has is_teacher flag.
-    Redirects anonymous users to login, raises PermissionDenied (403) for authenticated users
-    without permission.
-    """
     def decorator(view_func):
         @wraps(view_func)
         def _wrapped(request, *args, **kwargs):
             user = request.user
             if not user.is_authenticated:
                 return redirect_to_login(request.get_full_path())
-            # Allow superuser / staff
             if user.is_superuser or user.is_staff:
                 return view_func(request, *args, **kwargs)
-            # Allow if explicit permission or legacy is_teacher boolean
             if user.has_perm(perm_codename) or getattr(user, "is_teacher", False):
                 return view_func(request, *args, **kwargs)
-            # Otherwise deny
             raise PermissionDenied
         return _wrapped
     return decorator
 
 
-# helper: course ownership check (keeps previous logic)
 def _user_can_manage_course(user, course: Course) -> bool:
     if user.is_staff or user.is_superuser:
         return True
@@ -69,11 +59,9 @@ def _user_can_manage_course(user, course: Course) -> bool:
             return course.instructor.id == user.id
         except Exception:
             return False
-    # fallback: allow users with the is_teacher flag
     return getattr(user, 'is_teacher', False)
 
 
-# Apply the new decorator: requires 'grades.can_grade' OR staff/superuser OR is_teacher
 CAN_GRADE_DECORATOR = permission_or_staff_required('grades.can_grade')
 
 
