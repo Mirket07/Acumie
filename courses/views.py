@@ -7,12 +7,13 @@ from grades.models import Grade
 from feedback.models import FeedbackRequest
 from outcomes.models import LearningOutcome
 
-
 @login_required
 def course_detail_view(request, course_id):
     course = get_object_or_404(Course, id=course_id)
-
+    
     sections = course.sections.prefetch_related('materials').all()
+    
+    participants = course.enrollments.select_related('student').all()
 
     learning_outcomes = (
         LearningOutcome.objects
@@ -52,7 +53,6 @@ def course_detail_view(request, course_id):
             .values_list('assessment_id', flat=True)
             .distinct()
         )
-
         is_instructor = False
 
     elif getattr(user, "role", "") == 'INSTRUCTOR' or user.is_staff:
@@ -72,10 +72,10 @@ def course_detail_view(request, course_id):
             .filter(assessment__course=course, is_resolved=False)
             .order_by('-request_date')
         )
-
     else:
         student_grades = []
         is_instructor = False
+
 
     context = {
         'course': course,
@@ -84,7 +84,8 @@ def course_detail_view(request, course_id):
         'is_instructor': is_instructor,
         'requested_assessment_ids': requested_assessment_ids,
         'learning_outcomes': learning_outcomes,
-        'teacher_feedback_requests': teacher_feedback_requests,
+        'participants': participants, 
+        'teacher_feedback_requests': teacher_feedback_requests, 
     }
 
     return render(request, 'courses/course_detail.html', context)
