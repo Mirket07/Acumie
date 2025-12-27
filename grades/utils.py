@@ -1,6 +1,6 @@
 from django.db.models import F
 from collections import defaultdict
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from .models import Grade
 from courses.models import Course
 from outcomes.models import LO_PO_Contribution
@@ -58,3 +58,45 @@ def calculate_weighted_po_score(student_id: int):
             final_po_scores[po_code] = 0.0
 
     return final_po_scores
+
+
+def quantize(val: Decimal) -> Decimal:
+    return Decimal(val).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+def calculate_lo_scores(student, course: Course, treat_missing_as_zero: bool = True) -> dict:
+    result = {}
+    assessments = list(course.assessments.all())
+    los = set()
+    for a in assessments:
+        for lo in a.learning_outcomes.all():
+            los.add(lo)
+
+    for lo in los:
+        total = Decimal("0.00")
+        weight_sum = Decimal("0.00")
+        for assessment in assessments:
+            if not assessment.learning_outcomes.filter(pk=lo.pk).exists():
+                continue
+
+            weight_frac = (Decimal(assessment.weight_percentage) / Decimal(100)) if assessment.weight_percentage is not None else Decimal("0.00")
+
+            g = Grade.objects.filter(student=student, assessment=assessment, learning_outcome=lo).first()
+            if g is None:
+                if treat_missing_as_zero:
+                    grade_val = Decimal("0.00")
+                else:
+                    continue
+            else:
+                grade_val = Decimal(str(g.score_percentage))
+
+            total += (grade_val * weight_frac)
+            weight_sum += weight_frac
+
+        if weight_sum == Decimal("0.00"):
+            lo_score = Decimal("0.00")
+        else:
+            lo_score = (total / weight_sum)
+
+        result[lo] = quantize(lo_score)
+
+    return result

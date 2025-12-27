@@ -6,7 +6,9 @@
   <h2 class="mb-3">Teacher Dashboard</h2>
   <p class="text-muted">Your courses (only courses assigned to you)</p>
 
-
+<div class="mb-3">
+    <a class="btn btn-sm btn-outline-success" href="{% url 'courses:teacher_course_create' %}">+ Add Course</a>
+  </div>
 
   <div class="list-group">
     {% for c in my_courses %}
