@@ -1,3 +1,12 @@
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import FieldDoesNotExist
+
+from .models import Course
+from grades.models import Grade
+from feedback.models import FeedbackRequest
+from outcomes.models import LearningOutcome
+
 @login_required
 def course_detail_view(request, course_id):
     course = get_object_or_404(Course, id=course_id)
