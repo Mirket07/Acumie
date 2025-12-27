@@ -7,11 +7,12 @@
   <p class="text-muted">Your courses (only courses assigned to you)</p>
 
   <div class="mb-3">
-    <a class="btn btn-primary" href="{% url 'grades:teacher_course_create' %}">+ Add Course</a>
-    <!-- teacher_course_create will be implemented later -->
+    <a class="btn btn-sm btn-outline-success" href="{% url 'courses:teacher_course_create' %}">
+      + Add Course
+    </a>
   </div>
 
-  <div class="list-group">
+  <div class="list-group mb-5">
     {% for c in my_courses %}
       <div class="list-group-item d-flex justify-content-between align-items-center">
         <div>
@@ -21,12 +22,40 @@
         <div class="btn-group">
           <a class="btn btn-sm btn-outline-primary" href="{% url 'courses:detail' c.id %}">View</a>
           <a class="btn btn-sm btn-outline-secondary" href="{% url 'grades:teacher_course_edit' c.id %}">Edit</a>
-          <a class="btn btn-sm btn-outline-success" href="{% url 'grades:teacher_grade_entry' c.id %}">Enter Grades</a>
+          <a class="btn btn-sm btn-outline-success" href="{% url 'grades:teacher_grade_entry' c.id %}">
+            Enter Grades
+          </a>
         </div>
       </div>
     {% empty %}
       <div class="alert alert-info">You have no assigned courses.</div>
     {% endfor %}
   </div>
+
+  <h4 class="mb-3">Student Feedback Requests</h4>
+
+  {% if feedback_requests %}
+    <div class="list-group">
+      {% for req in feedback_requests %}
+        <div class="list-group-item">
+          <strong>
+            {{ req.student.get_full_name|default:req.student.username }}
+          </strong>
+          requested feedback for
+          <strong>{{ req.assessment.course.code }}</strong>
+          — {{ req.assessment.get_type_display }}
+          <br>
+          <small class="text-muted">
+            Requested on {{ req.request_date|date:"Y-m-d H:i" }}
+          </small>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="alert alert-secondary">
+      No pending feedback requests 🎉
+    </div>
+  {% endif %}
+
 </div>
 {% endblock %}

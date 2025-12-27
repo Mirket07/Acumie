@@ -3,7 +3,7 @@ import io
 from decimal import Decimal
 from typing import List, Tuple
 from functools import wraps
-
+from feedback.models import FeedbackRequest
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.forms import modelformset_factory
@@ -19,8 +19,6 @@ from .models import Grade
 from courses.models import Course, Assessment, Enrollment
 from outcomes.models import LearningOutcome
 
-
-
 GradeForm = None
 GradeFormSet = None
 try:
@@ -34,24 +32,8 @@ DEFAULT_MAX_UPLOAD_BYTES = getattr(settings, "GRADE_CSV_MAX_BYTES", 5 * 1024 * 1
 ALLOWED_UPLOAD_EXTENSIONS = getattr(settings, "GRADE_CSV_ALLOWED_EXT", (".csv",))
 
 
-@login_required
-def teacher_dashboard(request):
-    user = request.user
-    if not (getattr(user, "role", "") == "INSTRUCTOR" or user.is_staff):
-        return HttpResponseForbidden("You do not have permission to access this page.")
-
-    my_courses = Course.objects.filter(instructor=user).order_by("code")
-    total_courses = my_courses.count()
-
-    context = {
-        "my_courses": my_courses,
-        "total_courses": total_courses,
-    }
-    return render(request, "grades/teacher/dashboard.html", context)
-
-
 def permission_or_staff_required(perm_codename: str):
-    def decorator(view_func):
+   def decorator(view_func):
         @wraps(view_func)
         def _wrapped(request, *args, **kwargs):
             user = request.user
@@ -63,21 +45,49 @@ def permission_or_staff_required(perm_codename: str):
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied
         return _wrapped
-    return decorator
+   return decorator
+
+
+CAN_GRADE_DECORATOR = permission_or_staff_required('grades.can_grade')
 
 
 def _user_can_manage_course(user, course: Course) -> bool:
     if user.is_staff or user.is_superuser:
         return True
-    if hasattr(course, 'instructor') and getattr(course, 'instructor') is not None:
+    if getattr(course, "instructor", None) is not None:
         try:
-            return course.instructor.id == user.id
+            return course.instructor_id == user.id
         except Exception:
             return False
-    return getattr(user, 'is_teacher', False)
+    return getattr(user, "is_teacher", False)
 
 
-CAN_GRADE_DECORATOR = permission_or_staff_required('grades.can_grade')
+@login_required
+def teacher_dashboard(request):
+    user = request.user
+    if not (user.is_staff or getattr(user, "role", "") == "INSTRUCTOR" or getattr(user, "is_teacher", False)):
+        return HttpResponseForbidden("You do not have permission to access this page.")
+
+    if user.is_staff or user.is_superuser:
+        my_courses = Course.objects.all().order_by("code")
+    else:
+        my_courses = Course.objects.filter(instructor=user).order_by("code")
+
+    feedback_requests = (
+        FeedbackRequest.objects
+        .select_related("student", "assessment", "assessment__course")
+        .filter(
+            assessment__course__in=my_courses,
+            is_resolved=False
+        )
+        .order_by("-request_date")
+    )
+
+    context = {
+        "my_courses": my_courses,
+        "total_courses": my_courses.count(),
+    }
+    return render(request, "grades/teacher/dashboard.html", context)
 
 
 @CAN_GRADE_DECORATOR
@@ -99,6 +109,7 @@ def teacher_grade_entry(request, course_id: int):
     course = get_object_or_404(Course, pk=course_id)
     if not _user_can_manage_course(request.user, course):
         return HttpResponseForbidden("You do not have permission to manage this course.")
+
     assessment_id = request.GET.get('assessment')
     if not assessment_id:
         return redirect(reverse('grades:teacher_select_assessment', args=[course_id]))
@@ -143,6 +154,7 @@ def teacher_grade_entry(request, course_id: int):
                         if not form.has_changed():
                             continue
                         inst = form.save(commit=False)
+
                         try:
                             score_val = Decimal(inst.score_percentage)
                         except Exception:
@@ -164,6 +176,7 @@ def teacher_grade_entry(request, course_id: int):
                         inst._changed_by = request.user
                         inst.save()
                         saved_any = True
+
                     if saved_any:
                         messages.success(request, "Grades updated successfully.")
                     else:
@@ -250,7 +263,7 @@ def teacher_grade_bulk_upload(request, course_id: int):
                     if assessment_field.isdigit():
                         assessment_obj = Assessment.objects.filter(pk=int(assessment_field), course=course).first()
                     if assessment_obj is None:
-                        assessment_obj = Assessment.objects.filter(course=course).first()  # fallback heuristic
+                        assessment_obj = Assessment.objects.filter(course=course).first()
 
                     if assessment_obj is None:
                         errors.append((line_no, f"Assessment '{assessment_field}' not found for course"))

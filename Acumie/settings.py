@@ -134,5 +134,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
-LOGIN_REDIRECT_URL = '/grades/dashboard/'
+LOGIN_REDIRECT_URL = '/accounts/after-login/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
