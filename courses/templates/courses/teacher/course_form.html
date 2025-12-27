@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{% if is_create %}Create Course{% else %}Edit Course{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h2>{% if is_create %}Create Course{% else %}Edit Course: {{ course.code }}{% endif %}</h2>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="card mb-3">
+      <div class="card-body">
+        {{ form.non_field_errors }}
+        <div class="mb-3">
+          {{ form.code.label_tag }}{{ form.code }}
+          {% for err in form.code.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
+        </div>
+        <div class="mb-3">
+          {{ form.title.label_tag }}{{ form.title }}
+          {% for err in form.title.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
+        </div>
+        <div class="mb-3">
+          {{ form.ects_credit.label_tag }}{{ form.ects_credit }}
+          {% for err in form.ects_credit.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
+        </div>
+        {{ form.instructor }}
+      </div>
+    </div>
+
+    <h4>Assessments</h4>
+    {{ formset.non_form_errors }}
+    {{ formset.management_form }}
+    <div class="list-group mb-3">
+      {% for form in formset %}
+        <div class="list-group-item mb-2">
+          {{ form.id }}
+          <div class="row">
+            <div class="col-md-3">
+              {{ form.type.label_tag }}{{ form.type }}
+            </div>
+            <div class="col-md-3">
+              {{ form.weight_percentage.label_tag }}{{ form.weight_percentage }}
+            </div>
+            <div class="col-md-5">
+              {{ form.learning_outcomes.label_tag }}{{ form.learning_outcomes }}
+            </div>
+            <div class="col-md-1">
+              {% if form.instance.pk %}
+                {{ form.DELETE }} <small class="text-muted">Delete</small>
+              {% else %}
+                {{ form.DELETE }} <small class="text-muted">Delete</small>
+              {% endif %}
+            </div>
+          </div>
+          {% for field in form.visible_fields %}
+            {% for err in field.errors %}
+              <div class="text-danger small mt-1">{{ err }}</div>
+            {% endfor %}
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn btn-secondary" href="{% url 'grades:teacher_dashboard' %}">Cancel</a>
+  </form>
+</div>
+{% endblock %}
