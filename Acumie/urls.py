@@ -18,7 +18,8 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
-from django.views.generic import RedirectView 
+from django.views.generic import RedirectView
+from accounts.views import post_login_redirect
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -32,4 +33,5 @@ urlpatterns = [
     path('feedback/', include('feedback.urls')),
     
     path('', RedirectView.as_view(pattern_name='grades:dashboard'), name='home'),
+    path('accounts/after-login/', post_login_redirect, name='after_login')
 ]
