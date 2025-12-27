@@ -9,7 +9,8 @@ def course_detail_view(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     sections = course.sections.prefetch_related('materials').all()
     learning_outcomes = course.learning_outcomes.all().order_by('code')
-    
+    participants = course.enrollments.select_related('student').all()
+
     requested_assessment_ids = []
 
     if request.user.role == 'STUDENT':
@@ -41,6 +42,7 @@ def course_detail_view(request, course_id):
         'is_instructor': is_instructor,
         'requested_assessment_ids': requested_assessment_ids,
         'learning_outcomes': learning_outcomes, 
+        'participants': participants,
     }
     
     return render(request, 'courses/course_detail.html', context)
