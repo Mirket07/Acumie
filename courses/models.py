@@ -117,40 +117,7 @@ class Enrollment(models.Model):
     def __str__(self):
         return f"{self.student.username} in {self.course.title}"
 
-
 class CourseSection(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sections')
-    title = models.CharField(max_length=200)
-    order = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        ordering = ['order']
-
-    def __str__(self):
-        return f"{self.course.code} - {self.title}"
-
-class CourseMaterial(models.Model):
-    MATERIAL_TYPES = [
-        ('SLIDE', 'Slide/File'),
-        ('LINK', 'Link/URL'),
-        ('ANNOUNCEMENT', 'Announcement'),
-    ]
-    
-    section = models.ForeignKey(CourseSection, on_delete=models.CASCADE, related_name='materials')
-    title = models.CharField(max_length=200)
-    type = models.CharField(max_length=20, choices=MATERIAL_TYPES, default='SLIDE')
-    link = models.URLField(blank=True, null=True)
-    
-    class Meta:
-        verbose_name = "Course Material"
-
-    def __str__(self):
-        return self.title
-    
-
-
-class CourseSection(models.Model):
-
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sections')
     title = models.CharField(max_length=200, verbose_name="Section Title") 
     order = models.PositiveIntegerField(default=0)

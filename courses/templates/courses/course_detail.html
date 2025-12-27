@@ -24,6 +24,11 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
+                    <button class="nav-link py-3 px-4 text-dark" id="participants-tab" data-bs-toggle="tab" data-bs-target="#participants-content" type="button" role="tab" aria-controls="participants-content" aria-selected="false">
+                        <i class="bi bi-people me-2"></i> Participants
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
                     <button class="nav-link py-3 px-4 text-dark" id="grades-tab" data-bs-toggle="tab" data-bs-target="#grades-content" type="button" role="tab" aria-controls="grades-content" aria-selected="false">
                         <i class="bi bi-trophy me-2"></i> Grades
                     </button>
@@ -111,6 +116,37 @@
                         {% empty %}
                             <div class="alert alert-info">No sections found for this course.</div>
                         {% endfor %}
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="participants-content" role="tabpanel" aria-labelledby="participants-tab">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white border-bottom">
+                            <h5 class="mb-0 text-info"><i class="bi bi-people"></i> Course Participants</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <ul class="list-group list-group-flush">
+                                {% for enrollment in participants %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-person-circle fs-4 me-3 text-secondary"></i>
+                                            <div>
+                                                <div class="fw-bold text-dark">
+                                                    {{ enrollment.student.get_full_name|default:enrollment.student.username }}
+                                                </div>
+                                                <small class="text-muted">@{{ enrollment.student.username }}</small>
+                                            </div>
+                                        </div>
+                                        <span class="badge bg-light text-dark border rounded-pill">Student</span>
+                                    </li>
+                                {% empty %}
+                                    <li class="list-group-item text-center py-5 text-muted">
+                                        <i class="bi bi-people fs-1 d-block mb-3 opacity-25"></i>
+                                        No participants enrolled in this course yet.
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
                     </div>
                 </div>
 
@@ -231,7 +267,6 @@
 </div>
 
 <script>
-// 1. Feedback İsteği Gönderme Scripti
 function sendFeedbackRequest(btn) {
     const url = btn.getAttribute('data-url');
     btn.disabled = true;
@@ -272,34 +307,27 @@ function sendFeedbackRequest(btn) {
     });
 }
 
-// 2. Sidebar'dan Haftalara Gitme Scripti (GÜNCELLENDİ)
 function goToSection(sectionId) {
-    // a. Eğer başka sekmedeysek önce Course Materials sekmesini aç
     const courseTabBtn = document.getElementById('course-tab');
     if (!courseTabBtn.classList.contains('active')) {
         const courseTabInstance = new bootstrap.Tab(courseTabBtn);
         courseTabInstance.show();
     }
 
-    // b. İlgili akordiyonu bul ve aç (Eğer kapalıysa)
     const collapseElement = document.getElementById('collapse' + sectionId);
     if (collapseElement) {
-        // Bootstrap 5 ile collapse instance'ı al veya oluştur
         const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseElement, { toggle: false });
         bsCollapse.show();
     }
 
-    // c. Sayfayı o bölüme kaydır
     setTimeout(() => {
         const sectionElement = document.getElementById('section-' + sectionId);
         if(sectionElement) {
             sectionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            
-            // Kullanıcının dikkatini çekmek için kısa süreli highlight efekti (opsiyonel)
             sectionElement.classList.add('bg-warning', 'bg-opacity-10');
             setTimeout(() => sectionElement.classList.remove('bg-warning', 'bg-opacity-10'), 1000);
         }
-    }, 200); // Sekme değişimini beklemek için minik gecikme
+    }, 200); 
 }
 </script>
 
