@@ -1,7 +1,10 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import FieldDoesNotExist
-
+from django.shortcuts import redirect
+from django.db import transaction
+from django.http import HttpResponseForbidden
+from .forms import CourseForm, AssessmentFormSet
 from .models import Course
 from grades.models import Grade
 from feedback.models import FeedbackRequest
@@ -89,3 +92,74 @@ def course_detail_view(request, course_id):
     }
 
     return render(request, 'courses/course_detail.html', context)
+
+
+@login_required
+def teacher_course_create(request):
+    user = request.user
+    if not (user.is_staff or getattr(user, "role", "") == "INSTRUCTOR"):
+        return HttpResponseForbidden("You are not allowed to create courses.")
+
+    if request.method == "POST":
+        form = CourseForm(request.POST)
+        formset = AssessmentFormSet(request.POST)
+        if form.is_valid() and formset.is_valid():
+            try:
+                with transaction.atomic():
+                    course = form.save(commit=False)
+                    if not user.is_staff:
+                        course.instructor = user
+                    else:
+                        if not course.instructor:
+                            course.instructor = user
+                    course.save()
+                    formset.instance = course
+                    formset.save()
+                return redirect("grades:teacher_dashboard")
+            except Exception as e:
+                form.add_error(None, f"Error saving course: {e}")
+    else:
+        initial = {}
+        form = CourseForm(initial=initial)
+        formset = AssessmentFormSet()
+
+    return render(request, "courses/teacher/course_form.html", {
+        "form": form,
+        "formset": formset,
+        "is_create": True,
+    })
+
+
+@login_required
+def teacher_course_edit(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    user = request.user
+    if not (user.is_staff or (course.instructor and course.instructor.id == user.id) or getattr(user, "role", "") == "INSTRUCTOR" and course.instructor is None):
+        return HttpResponseForbidden("You are not allowed to edit this course.")
+
+    if request.method == "POST":
+        form = CourseForm(request.POST, instance=course)
+        formset = AssessmentFormSet(request.POST, instance=course)
+        if form.is_valid() and formset.is_valid():
+            try:
+                with transaction.atomic():
+                    course = form.save(commit=False)
+                    if not user.is_staff:
+                        course.instructor = user
+                    course.save()
+                    formset.instance = course
+                    formset.save()
+                return redirect("grades:teacher_dashboard")
+            except Exception as e:
+                form.add_error(None, f"Error saving course: {e}")
+    else:
+        form = CourseForm(instance=course)
+        formset = AssessmentFormSet(instance=course)
+
+    return render(request, "courses/teacher/course_form.html", {
+        "form": form,
+        "formset": formset,
+        "is_create": False,
+        "course": course,
+    })
+
