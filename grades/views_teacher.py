@@ -3,7 +3,7 @@ import io
 from decimal import Decimal
 from typing import List, Tuple
 from functools import wraps
-
+from feedback.models import FeedbackRequest
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.forms import modelformset_factory
@@ -72,6 +72,16 @@ def teacher_dashboard(request):
         my_courses = Course.objects.all().order_by("code")
     else:
         my_courses = Course.objects.filter(instructor=user).order_by("code")
+
+    feedback_requests = (
+        FeedbackRequest.objects
+        .select_related("student", "assessment", "assessment__course")
+        .filter(
+            assessment__course__in=my_courses,
+            is_resolved=False
+        )
+        .order_by("-request_date")
+    )
 
     context = {
         "my_courses": my_courses,
