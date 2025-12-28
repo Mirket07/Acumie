@@ -59,6 +59,6 @@ class CourseAdmin(admin.ModelAdmin):
 
 @admin.register(Assessment)
 class AssessmentAdmin(admin.ModelAdmin):
-    list_display = ('course', 'type', 'weight_percentage')
+    list_display = ('course', 'type', 'name', 'weight_percentage')
     list_filter = ('course', 'type')
     filter_horizontal = ('learning_outcomes',)

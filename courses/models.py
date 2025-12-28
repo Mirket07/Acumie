@@ -45,16 +45,25 @@ class Assessment(models.Model):
         ('FINAL', 'Final'),     
         ('HOMEWORK', 'Homework'), 
         ('PROJECT', 'Project'), 
-        ('QUIZ', 'Quiz'),      
+        ('QUIZ', 'Quiz'),
+        ('ATTENDANCE', 'Attendance'),
         ('OTHER', 'Other'),     
     ]
     
     course = models.ForeignKey(
-        Course, 
+        'Course',
         on_delete=models.CASCADE, 
         related_name='assessments',
         verbose_name="Course" 
     )
+
+    name = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name="Label / Name",
+    )
+
     type = models.CharField(
         max_length=10, 
         choices=ASSESSMENT_TYPES,
@@ -78,10 +87,10 @@ class Assessment(models.Model):
 
     class Meta:
         verbose_name = "Assessment" 
-        verbose_name_plural = "Assessments" 
-        unique_together = ('course', 'type') 
+        verbose_name_plural = "Assessments"
 
     def __str__(self):
+        label= f"{self.name} " if self.name else ""
         return f"{self.course.code} - {self.get_type_display()}"
 
     @property
