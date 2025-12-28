@@ -2,9 +2,9 @@
   <div class="col-md-4">
     <div class="card shadow-sm border-start border-info border-4 h-100">
       <div class="card-body">
-        <h6 class="card-title text-muted text-uppercase small">Academic GPA</h6>
+        <h6 class="card-title text-muted text-uppercase small">GPA</h6>
         <div class="d-flex align-items-center">
-            <h1 class="display-6 fw-bold mb-0 me-3">{{ overall_gpa|floatformat:2 }}%</h1>
+            <h1 class="display-6 fw-bold mb-0 me-3">{{ overall_gpa|floatformat:2 }} / 4.00</h1>
             <i class="bi bi-mortarboard fs-1 text-info opacity-25 ms-auto"></i>
         </div>
       </div>
@@ -39,7 +39,7 @@
   <div class="card-body p-0">
     <table class="table table-hover mb-0">
       <thead class="table-light">
-        <tr><th>Course Code</th><th>ECTS</th><th>Final Score</th><th>Status</th></tr>
+        <tr><th>Course</th><th>ECTS</th><th>Score (%)</th><th>Grade Point</th></tr>
       </thead>
       <tbody>
         {% for res in course_results %}
@@ -47,7 +47,7 @@
           <td class="fw-bold">{{ res.code }}</td>
           <td>{{ res.ects }}</td>
           <td>{{ res.score|floatformat:2 }}%</td>
-          <td>{% if res.score >= 50 %}<span class="text-success fw-bold">Passing</span>{% else %}<span class="text-danger fw-bold">Below Average</span>{% endif %}</td>
+          <td><span class="badge bg-dark">{{ res.point|floatformat:2 }}</span></td>
         </tr>
         {% endfor %}
       </tbody>

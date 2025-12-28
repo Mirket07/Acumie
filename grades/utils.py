@@ -1,8 +1,20 @@
-from decimal import Decimal
 from django.db.models import F
 from collections import defaultdict
+from decimal import Decimal, ROUND_HALF_UP
 from .models import Grade
+from courses.models import Course
 from outcomes.models import LO_PO_Contribution
+
+def get_4_scale_point(score):
+    if score >= 90: return Decimal("4.00")
+    if score >= 85: return Decimal("3.50")
+    if score >= 80: return Decimal("3.00")
+    if score >= 75: return Decimal("2.50")
+    if score >= 70: return Decimal("2.00")
+    if score >= 65: return Decimal("1.50")
+    if score >= 60: return Decimal("1.00")
+    if score >= 50: return Decimal("0.50")
+    return Decimal("0.00")
 
 def calculate_course_grade(student, course):
     assessments = course.assessments.all()
@@ -16,8 +28,7 @@ def calculate_course_grade(student, course):
 
 def calculate_weighted_po_score(student_id: int):
     student_grades = Grade.objects.filter(student_id=student_id).select_related('assessment__course')
-    if not student_grades.exists():
-        return {}
+    if not student_grades.exists(): return {}
     po_totals = defaultdict(Decimal)
     total_ects_impact = defaultdict(Decimal)
     all_contributions = LO_PO_Contribution.objects.select_related('program_outcome', 'learning_outcome').all()
