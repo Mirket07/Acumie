@@ -1,83 +1,55 @@
 <div class="row mb-4">
   <div class="col-md-4">
-    <div class="card shadow-sm border-start border-info border-4 h-100">
-      <div class="card-body">
-        <h6 class="card-title text-muted text-uppercase small">GPA</h6>
-        <div class="d-flex align-items-center">
-            <h1 class="display-6 fw-bold mb-0 me-3">{{ overall_gpa|floatformat:2 }} / 4.00</h1>
-            <i class="bi bi-mortarboard fs-1 text-info opacity-25 ms-auto"></i>
-        </div>
-      </div>
-    </div>
+    <div class="card shadow-sm border-start border-info border-4 h-100"><div class="card-body">
+      <h6 class="card-title text-muted text-uppercase small">GPA (4.00 Scale)</h6>
+      <h1 class="display-6 fw-bold mb-0 me-3">{{ overall_gpa|floatformat:2 }} / 4.00</h1>
+    </div></div>
   </div>
   <div class="col-md-4">
-    <div class="card shadow-sm border-start border-primary border-4 h-100">
-      <div class="card-body">
-        <h6 class="card-title text-muted text-uppercase small">Overall PO Mastery</h6>
-        <div class="d-flex align-items-center">
-            <h1 class="display-6 fw-bold mb-0 me-3">{% if average_po_score and average_po_score != "N/A" %}{{ average_po_score }}%{% else %}0.00%{% endif %}</h1>
-            <i class="bi bi-graph-up-arrow fs-1 text-primary opacity-25 ms-auto"></i>
-        </div>
-      </div>
-    </div>
+    <div class="card shadow-sm border-start border-primary border-4 h-100"><div class="card-body">
+      <h6 class="card-title text-muted text-uppercase small">Overall Synergy Score</h6>
+      <h1 class="display-6 fw-bold mb-0 me-3">{% if average_po_score != "N/A" %}{{ average_po_score }}%{% else %}0.00%{% endif %}</h1>
+    </div></div>
   </div>
   <div class="col-md-4">
-    <div class="card shadow-sm border-start border-success border-4 h-100">
-      <div class="card-body">
-        <h6 class="card-title text-muted text-uppercase small">Total Credits</h6>
-        <div class="d-flex align-items-center">
-            <h1 class="display-6 fw-bold mb-0 me-3">{{ total_courses }} Courses</h1>
-            <i class="bi bi-book fs-1 text-success opacity-25 ms-auto"></i>
-        </div>
-      </div>
-    </div>
+    <div class="card shadow-sm border-start border-success border-4 h-100"><div class="card-body">
+      <h6 class="card-title text-muted text-uppercase small">Courses Count</h6>
+      <h1 class="display-6 fw-bold mb-0 me-3">{{ total_courses }}</h1>
+    </div></div>
   </div>
 </div>
-
 <div class="card shadow-sm mb-4">
-  <div class="card-header bg-white fw-bold">Current Course Performance</div>
+  <div class="card-header bg-white fw-bold">Academic Performance</div>
   <div class="card-body p-0">
     <table class="table table-hover mb-0">
-      <thead class="table-light">
-        <tr><th>Course</th><th>ECTS</th><th>Score (%)</th><th>Grade Point</th></tr>
-      </thead>
+      <thead class="table-light"><tr><th>Course</th><th>ECTS</th><th>Score (%)</th><th>Grade Point</th></tr></thead>
       <tbody>
-        {% for res in course_results %}
-        <tr>
-          <td class="fw-bold">{{ res.code }}</td>
-          <td>{{ res.ects }}</td>
-          <td>{{ res.score|floatformat:2 }}%</td>
-          <td><span class="badge bg-dark">{{ res.point|floatformat:2 }}</span></td>
-        </tr>
+        {% for r in course_results %}
+        <tr><td>{{ r.code }}</td><td>{{ r.ects }}</td><td>{{ r.score|floatformat:2 }}%</td><td><span class="badge bg-dark">{{ r.point|floatformat:2 }}</span></td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
-
 <div class="card shadow-lg border-0 mb-4">
-  <div class="card-header bg-dark text-white d-flex align-items-center"><i class="bi bi-bar-chart-steps me-2"></i><h5 class="mb-0">Synergy Analyzer: PO Completion</h5></div>
+  <div class="card-header bg-dark text-white fw-bold">Synergy Analyzer: PO Mastery</div>
   <div class="card-body">
     {% if po_scores %}
       <div class="table-responsive">
         <table class="table table-hover align-middle">
-          <thead class="table-light"><tr><th style="width: 20%;">PO Code</th><th style="width: 50%;">Mastery (%)</th><th style="width: 30%;">Status</th></tr></thead>
+          <thead class="table-light"><tr><th style="width: 30%;">PO Code</th><th>Mastery (%)</th></tr></thead>
           <tbody>
-            {% for po_code, score in po_scores.items %}
-              <tr>
-                <td class="fw-bold">{{ po_code }}</td>
-                <td>
-                    <div class="d-flex align-items-center">
-                        <span class="me-2">{{ score|floatformat:2 }}%</span>
-                        <div class="progress flex-grow-1" style="height: 6px;"><div class="progress-bar {% if score >= 80 %}bg-success{% elif score >= 60 %}bg-warning{% else %}bg-danger{% endif %}" role="progressbar" style="width: {{ score|floatformat:0 }}%"></div></div>
-                    </div>
-                </td>
-                <td>{% if score >= 80 %}<span class="badge bg-success">Excellent</span>{% elif score >= 60 %}<span class="badge bg-warning text-dark">Good</span>{% else %}<span class="badge bg-danger">Needs Work</span>{% endif %}</td>
-              </tr>
+            {% for code, score in po_scores.items %}
+              <tr><td class="fw-bold">{{ code }}</td><td>
+                  <div class="d-flex align-items-center">
+                      <span class="me-2 text-primary fw-bold">{{ score|floatformat:2 }}%</span>
+                      <div class="progress flex-grow-1" style="height: 8px;"><div class="progress-bar" style="width: {{ score }}%"></div></div>
+                  </div>
+              </td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
-    {% else %}<p class="text-center py-4 text-muted">No PO data available yet.</p>{% endif %}
+    {% else %}<p class="text-center py-4 text-muted">No PO data available.</p>{% endif %}
   </div>
 </div>

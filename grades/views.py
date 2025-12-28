@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg
 from decimal import Decimal
@@ -11,50 +11,36 @@ def grade_dashboard_view(request):
     user = request.user
     role = getattr(user, "role", "").upper() if hasattr(user, "role") else ""
     context = {"user_name": user.get_full_name() or user.username, "user_role": role}
-    
     if user.is_staff or user.is_superuser:
         courses_qs = Course.objects.all().order_by("code")
     elif role == "INSTRUCTOR":
         courses_qs = Course.objects.filter(instructor=user).order_by("code")
     else:
         courses_qs = Course.objects.filter(enrollments__student=user).distinct().order_by("code")
-    
     context["courses"] = courses_qs
     context["total_courses"] = courses_qs.count()
-
     if role == "STUDENT":
         context["is_student"] = True
         course_results = []
-        total_gpa_weighted_points = Decimal("0.00")
+        total_gpa_weighted = Decimal("0.00")
         total_ects = Decimal("0.00")
-        
         for course in courses_qs:
             score_100 = calculate_course_grade(user, course)
             point_4 = get_4_scale_point(score_100)
-            course_results.append({
-                'code': course.code,
-                'title': course.title,
-                'ects': course.ects_credit,
-                'score': score_100,
-                'point': point_4
-            })
-            total_gpa_weighted_points += (point_4 * Decimal(str(course.ects_credit)))
+            course_results.append({'code': course.code, 'title': course.title, 'ects': course.ects_credit, 'score': score_100, 'point': point_4})
+            total_gpa_weighted += (point_4 * Decimal(str(course.ects_credit)))
             total_ects += Decimal(str(course.ects_credit))
-        
         context["course_results"] = course_results
-        context["overall_gpa"] = (total_gpa_weighted_points / total_ects) if total_ects > 0 else 0
-        
+        context["overall_gpa"] = (total_gpa_weighted / total_ects) if total_ects > 0 else 0
         try:
-            po_scores = calculate_weighted_po_score(student_id=user.id) or {}
-        except Exception:
+            po_scores = calculate_weighted_po_score(user.id)
+        except:
             po_scores = {}
         context["po_scores"] = po_scores
-        context["average_po_score"] = (f"{sum(po_scores.values()) / len(po_scores):.2f}" if po_scores else "N/A")
-
+        context["average_po_score"] = f"{sum(po_scores.values())/len(po_scores):.2f}" if po_scores else "N/A"
     return render(request, "grades/dashboard.html", context)
 
 @login_required
 def all_grades_average_view(request):
-    avg_score = Grade.objects.aggregate(avg_score=Avg('score_percentage'))['avg_score']
-    context = {"average": f"{avg_score:.2f}" if avg_score is not None else "0.00"}
-    return render(request, "grades/all_grades_average.html", context)
+    avg = Grade.objects.aggregate(a=Avg('score_percentage'))['a']
+    return render(request, "grades/all_grades_average.html", {"average": f"{avg:.2f}" if avg else "0.00"})
