@@ -112,7 +112,7 @@ class Enrollment(models.Model):
     student = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        limit_choices_to={'is_student': True},
+        limit_choices_to={'role': 'STUDENT'},
         related_name='enrollments',
     )
     course = models.ForeignKey(

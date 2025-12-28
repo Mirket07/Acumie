@@ -15,11 +15,18 @@ class CustomUser(AbstractUser):
         verbose_name="Kullanıcı Rolü"
     )
 
-class Meta:
+    class Meta:
         verbose_name = "Kullanıcı"
         verbose_name_plural = "Kullanıcılar"
 
-def __str__(self):
+    def __str__(self):
         display_name = self.email if self.email else self.username
         return f"{display_name} ({self.get_role_display()})"
 
+    @property
+    def is_student(self) -> bool:
+        return self.role == UserRole.STUDENT
+
+    @property
+    def is_teacher(self) -> bool:
+        return self.role == UserRole.INSTRUCTOR
