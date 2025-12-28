@@ -120,7 +120,7 @@ def teacher_grade_entry(request, course_id):
         if updated:
             messages.success(request, "Grades updated successfully.")
 
-        return redirect(reverse("grades:teacher_grade_entry", args=[course.id]))
+        return redirect(reverse("grades:grade_entry", args=[course.id]))
 
     flat_scores = {}
     for student in students:
@@ -184,6 +184,6 @@ def teacher_grade_bulk_upload(request, course_id):
                     continue
 
         messages.success(request, f"{success} grades imported.")
-        return redirect(reverse("grades:teacher_grade_entry", args=[course.id]))
+        return redirect(reverse("grades:grade_entry", args=[course.id]))
 
     return render(request, "grades/teacher/bulk_upload.html", {"course": course})
