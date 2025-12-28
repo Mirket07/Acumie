@@ -45,8 +45,7 @@ class AssessmentInline(admin.StackedInline):
     model = Assessment
     formset = AssessmentInlineFormSet
     extra = 1
-    filter_horizontal = ('learning_outcomes',)
-    fields = ('name', 'type', 'weight_percentage', 'learning_outcomes',)
+    fields = ('name', 'type', 'weight_percentage')  # do NOT include learning_outcomes here
 
 
 class CourseMaterialInline(admin.TabularInline):
@@ -72,7 +71,7 @@ class CourseSectionAdmin(admin.ModelAdmin):
 class AssessmentAdmin(admin.ModelAdmin):
     list_display = ('course', 'type', 'name', 'weight_percentage')
     list_filter = ('course', 'type')
-    filter_horizontal = ('learning_outcomes',)
+    # don't use filter_horizontal or inlines for learning_outcomes if the M2M uses a manual through model
 
 
 @admin.register(Enrollment)
@@ -89,7 +88,6 @@ class EnrollmentAdmin(admin.ModelAdmin):
         self.message_user(request, f"Deleted {count} enrollment(s).", level=messages.SUCCESS)
     remove_selected_enrollments.short_description = "Remove selected enrollments"
 
-    # add a custom admin view for bulk CSV enroll
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
@@ -150,7 +148,6 @@ class EnrollmentAdmin(admin.ModelAdmin):
                     self.message_user(request, e, level=messages.WARNING)
             return redirect(reverse('admin:courses_enrollment_changelist'))
 
-        # GET => show the upload form
         context = dict(
             self.admin_site.each_context(request),
             opts=self.model._meta,

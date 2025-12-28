@@ -80,6 +80,7 @@ class Assessment(models.Model):
     
     learning_outcomes = models.ManyToManyField(
         "outcomes.LearningOutcome",
+        through='AssessmentLearningOutcome',
         related_name='assessments',
         verbose_name="Associated Learning Outcomes (LOs)" ,
         blank=True
@@ -107,6 +108,28 @@ class Assessment(models.Model):
 
         if total>Decimal(100):
             raise ValidationError({'weight_percentage': f"Total weight for assessments in this course would exceed 100%. Current without this: {total_other}%. With this: {total}%."})
+
+
+class AssessmentLearningOutcome(models.Model):
+    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='lo_contributions')
+    learning_outcome = models.ForeignKey('outcomes.LearningOutcome', on_delete=models.CASCADE, related_name='assessment_contributions')
+    contribution_percentage = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="LO Contribution (%) from this Assessment",
+        help_text="Percentage (0-100) of this assessment's weight that maps to this LO."
+    )
+
+    class Meta:
+        unique_together = ('assessment', 'learning_outcome')
+        verbose_name = "Assessment-LO Contribution"
+        verbose_name_plural = "Assessment-LO Contributions"
+
+    def __str__(self):
+        return f"{self.assessment} -> {self.learning_outcome.code}: {self.contribution_percentage}%"
+
+
+
 
 class Enrollment(models.Model):
     student = models.ForeignKey(

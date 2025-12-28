@@ -18,10 +18,8 @@ class CourseForm(forms.ModelForm):
 class AssessmentForm(forms.ModelForm):
     class Meta:
         model = Assessment
-        fields = ("type", "weight_percentage", "learning_outcomes")
-        widgets = {
-            "learning_outcomes": forms.SelectMultiple(attrs={"size": 6})
-        }
+        fields = ("type", "weight_percentage", "name")
+        widgets = {}
 
 class AssessmentInlineFormSet(BaseInlineFormSet):
     def clean(self):
