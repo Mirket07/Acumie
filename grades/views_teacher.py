@@ -3,7 +3,7 @@ import io
 from decimal import Decimal
 from typing import List, Tuple
 from functools import wraps
-from feedback.models import FeedbackRequest
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.forms import modelformset_factory
@@ -18,6 +18,7 @@ from django.contrib.auth.views import redirect_to_login
 from .models import Grade
 from courses.models import Course, Assessment, Enrollment
 from outcomes.models import LearningOutcome
+from feedback.models import FeedbackRequest
 
 GradeForm = None
 GradeFormSet = None
@@ -27,13 +28,12 @@ except ImportError:
     GradeForm = None
     GradeFormSet = None
 
-
 DEFAULT_MAX_UPLOAD_BYTES = getattr(settings, "GRADE_CSV_MAX_BYTES", 5 * 1024 * 1024)
 ALLOWED_UPLOAD_EXTENSIONS = getattr(settings, "GRADE_CSV_ALLOWED_EXT", (".csv",))
 
 
 def permission_or_staff_required(perm_codename: str):
-   def decorator(view_func):
+    def decorator(view_func):
         @wraps(view_func)
         def _wrapped(request, *args, **kwargs):
             user = request.user
@@ -45,10 +45,7 @@ def permission_or_staff_required(perm_codename: str):
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied
         return _wrapped
-   return decorator
-
-
-CAN_GRADE_DECORATOR = permission_or_staff_required('grades.can_grade')
+    return decorator
 
 
 def _user_can_manage_course(user, course: Course) -> bool:
@@ -73,21 +70,20 @@ def teacher_dashboard(request):
     else:
         my_courses = Course.objects.filter(instructor=user).order_by("code")
 
-    feedback_requests = (
-        FeedbackRequest.objects
-        .select_related("student", "assessment", "assessment__course")
-        .filter(
-            assessment__course__in=my_courses,
-            is_resolved=False
-        )
-        .order_by("-request_date")
-    )
+    feedback_requests = FeedbackRequest.objects.filter(
+        assessment__course__in=my_courses,
+        is_resolved=False
+    ).select_related('student', 'assessment').order_by('-request_date')
 
     context = {
         "my_courses": my_courses,
         "total_courses": my_courses.count(),
+        "feedback_requests": feedback_requests,
     }
     return render(request, "grades/teacher/dashboard.html", context)
+
+
+CAN_GRADE_DECORATOR = permission_or_staff_required('grades.can_grade')
 
 
 @CAN_GRADE_DECORATOR

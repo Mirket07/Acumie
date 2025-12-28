@@ -21,7 +21,7 @@
         </div>
         <div class="btn-group">
           <a class="btn btn-sm btn-outline-primary" href="{% url 'courses:detail' c.id %}">View</a>
-          <a class="btn btn-sm btn-outline-secondary" href="{% url 'grades:teacher_course_edit' c.id %}">Edit</a>
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'courses:teacher_course_edit' c.id %}">Edit</a>
           <a class="btn btn-sm btn-outline-success" href="{% url 'grades:teacher_grade_entry' c.id %}">
             Enter Grades
           </a>
@@ -38,16 +38,12 @@
     <div class="list-group">
       {% for req in feedback_requests %}
         <div class="list-group-item">
-          <strong>
-            {{ req.student.get_full_name|default:req.student.username }}
-          </strong>
+          <strong>{{ req.student.get_full_name|default:req.student.username }}</strong>
           requested feedback for
           <strong>{{ req.assessment.course.code }}</strong>
           — {{ req.assessment.get_type_display }}
           <br>
-          <small class="text-muted">
-            Requested on {{ req.request_date|date:"Y-m-d H:i" }}
-          </small>
+          <small class="text-muted">Requested on {{ req.request_date|date:"Y-m-d H:i" }}</small>
         </div>
       {% endfor %}
     </div>

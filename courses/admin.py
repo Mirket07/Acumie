@@ -53,8 +53,8 @@ class CourseSectionAdmin(admin.ModelAdmin):
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ('code', 'title', 'ects_credit')
-    search_fields = ('code', 'title')
+    list_display = ('code', 'title', 'ects_credit', 'instructor')
+    search_fields = ('code', 'title', 'instructor__username', 'instructor__first_name', 'instructor__last_name')
     inlines = [AssessmentInline]
 
 @admin.register(Assessment)
