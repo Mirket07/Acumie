@@ -38,7 +38,7 @@
               <td class="text-start fw-bold">{{ student.get_full_name|default:student.username }}</td>
 
               {% for assessment in assessments %}
-                {% with key=student.id|stringformat:"s"|add:"_"|add:assessment.id|stringformat:"s" %}
+                {% with student_scores=scores|get_item:student.id %}
                   <td class="text-center">
                     <input
                       type="number"
@@ -46,7 +46,7 @@
                       min="0"
                       max="100"
                       name="score_{{ student.id }}_{{ assessment.id }}"
-                      value="{{ flat_scores|get_item:key }}"
+                      value="{{ student_scores|get_item:assessment.id }}"
                       class="form-control form-control-sm text-center"
                     >
                   </td>

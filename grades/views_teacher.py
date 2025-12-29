@@ -123,17 +123,17 @@ def teacher_grade_entry(request, course_id):
 
         return redirect(reverse("grades:teacher_grade_entry", args=[course.id]))
 
-    # Build flat_scores dict for pre-filling inputs
-    flat_scores = {}
+    # Build nested scores dict for pre-filling inputs: scores[student_id][assessment_id] = score
+    scores = {}
     qs = Grade.objects.filter(assessment__course=course)
     for g in qs:
-        flat_scores[f"{g.student_id}_{g.assessment_id}"] = g.score_percentage
+        scores.setdefault(g.student_id, {})[g.assessment_id] = g.score_percentage
 
     return render(request, "grades/teacher/grade_entry.html", {
         "course": course,
         "students": students,
         "assessments": assessments,
-        "flat_scores": flat_scores,
+        "scores": scores,
     })
 
 
