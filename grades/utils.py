@@ -4,15 +4,23 @@ from .models import Grade
 from outcomes.models import LO_PO_Contribution
 
 def get_4_scale_point(score):
-    if score >= 90: return Decimal("4.00")
-    if score >= 85: return Decimal("3.50")
-    if score >= 80: return Decimal("3.00")
-    if score >= 75: return Decimal("2.50")
-    if score >= 70: return Decimal("2.00")
-    if score >= 65: return Decimal("1.50")
-    if score >= 60: return Decimal("1.00")
-    if score >= 50: return Decimal("0.50")
-    return Decimal("0.00")
+    # Linear mapping anchored at tens: 100->4.00, 90->3.50, 80->3.00, ...
+    # Formula: gpa = 0.05 * score - 1.00 (clamped to [0.00, 4.00])
+    try:
+        s = Decimal(str(score))
+    except Exception:
+        return Decimal("0.00")
+    # Clamp input
+    if s <= Decimal("0"):
+        return Decimal("0.00")
+    if s >= Decimal("100"):
+        return Decimal("4.00")
+    gpa = (Decimal("0.05") * s) - Decimal("1.00")
+    if gpa < Decimal("0.00"):
+        gpa = Decimal("0.00")
+    if gpa > Decimal("4.00"):
+        gpa = Decimal("4.00")
+    return gpa.quantize(Decimal("0.00"))
 
 def calculate_course_grade(student, course):
     assessments = course.assessments.all()

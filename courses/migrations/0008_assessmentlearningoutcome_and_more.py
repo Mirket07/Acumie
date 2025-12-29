@@ -27,9 +27,4 @@ class Migration(migrations.Migration):
                 'unique_together': {('assessment', 'learning_outcome')},
             },
         ),
-        migrations.AlterField(
-            model_name='assessment',
-            name='learning_outcomes',
-            field=models.ManyToManyField(blank=True, related_name='assessments', through='courses.AssessmentLearningOutcome', to='outcomes.learningoutcome', verbose_name='Associated Learning Outcomes (LOs)'),
-        ),
     ]
