@@ -1,8 +1,51 @@
 {% extends "base.html" %}
-{% block title %}Add Material Removed{% endblock %}
+{% block title %}Add Material - {{ course.code }}{% endblock %}
 {% block content %}
 <div class="container py-4">
-  <div class="alert alert-info">The Add Material page has been removed. Please use the Course detail page instead.</div>
-  <a class="btn btn-secondary" href="/">Home</a>
+  <h3>Add Material for {{ course.code }} - {{ course.title }}</h3>
+  <form method="post" enctype="multipart/form-data" id="uploadForm"> {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label">Section (optional)</label>
+      {{ form.section }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Title (optional)</label>
+      {{ form.title }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Upload File</label>
+      {{ form.file }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Or Link</label>
+      {{ form.link }}
+    </div>
+    <div>
+      <button class="btn btn-primary" type="submit">Upload</button>
+      <a class="btn btn-secondary" href="{% url 'courses:detail' course.id %}">Cancel</a>
+    </div>
+  </form>
 </div>
+
+<script>
+  // Auto-open file picker and submit if file selected
+  document.addEventListener('DOMContentLoaded', function(){
+    const fileInput = document.querySelector('#id_file');
+    if(fileInput){
+      fileInput.click();
+      fileInput.addEventListener('change', function(){
+        if(fileInput.files && fileInput.files.length){
+          // Optionally set the title field from filename
+          const titleInput = document.querySelector('#id_title');
+          if(titleInput && !titleInput.value){
+            titleInput.value = fileInput.files[0].name;
+          }
+          // submit the form automatically
+          document.getElementById('uploadForm').submit();
+        }
+      });
+    }
+  });
+</script>
+
 {% endblock %}

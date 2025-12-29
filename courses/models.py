@@ -171,7 +171,8 @@ class CourseMaterial(models.Model):
     title = models.CharField(max_length=200)
     type = models.CharField(max_length=20, choices=MATERIAL_TYPES, default='SLIDE')
     link = models.URLField(blank=True, null=True, verbose_name="Link (if applicable)")
-    
+    uploaded_file = models.FileField(upload_to='course_materials/', blank=True, null=True, verbose_name="Uploaded file")
+
     class Meta:
         verbose_name = "Course Material"
 

@@ -9,6 +9,9 @@ from .models import Course
 from grades.models import Grade
 from feedback.models import FeedbackRequest
 from outcomes.models import LearningOutcome
+from django import forms
+from django.shortcuts import reverse
+from django.core.files.storage import default_storage
 
 @login_required
 def course_detail_view(request, course_id):
@@ -233,4 +236,60 @@ def teacher_course_edit(request, course_id):
     })
 
 
-# Removed teacher_add_material and teacher_upload_material per user request
+class MaterialUploadForm(forms.Form):
+    section = forms.ModelChoiceField(queryset=None, required=False)
+    title = forms.CharField(max_length=200, required=False)
+    file = forms.FileField(required=False)
+    link = forms.URLField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        course = kwargs.pop('course', None)
+        super().__init__(*args, **kwargs)
+        if course is not None:
+            self.fields['section'].queryset = course.sections.all()
+            self.fields['section'].required = False
+
+
+@login_required
+def teacher_add_material(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    user = request.user
+    if not (user.is_staff or (course.instructor and course.instructor_id == user.id)):
+        return HttpResponseForbidden()
+
+    if request.method == 'POST':
+        form = MaterialUploadForm(request.POST, request.FILES, course=course)
+        if form.is_valid():
+            section = form.cleaned_data.get('section')
+            title = form.cleaned_data.get('title') or (form.cleaned_data.get('file').name if form.cleaned_data.get('file') else 'Material')
+            fileobj = form.cleaned_data.get('file')
+            link = form.cleaned_data.get('link')
+
+            if not section:
+                # ensure a default section exists
+                section, _ = course.sections.get_or_create(title='General')
+
+            cm = None
+            if fileobj:
+                cm = course.sections.model.materials.related_model.objects.create(
+                    section=section,
+                    title=title,
+                    type='SLIDE',
+                    uploaded_file=fileobj,
+                )
+            elif link:
+                cm = course.sections.model.materials.related_model.objects.create(
+                    section=section,
+                    title=title,
+                    type='LINK',
+                    link=link,
+                )
+
+            if cm:
+                return redirect('courses:detail', course.id)
+            else:
+                form.add_error(None, 'Please provide a file or a link.')
+    else:
+        form = MaterialUploadForm(course=course)
+
+    return render(request, 'courses/teacher/add_material.html', {'course': course, 'form': form})
