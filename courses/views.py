@@ -131,6 +131,18 @@ def teacher_course_create(request):
                             alo_fs = row['alo_fs']
                             assessment_instance = aform.instance if (aform.instance and aform.instance.pk) else (assessments[idx] if idx < len(assessments) else None)
                             if assessment_instance:
+                                # handle inline new LOs
+                                for subform in alo_fs.forms:
+                                    if getattr(subform, 'cleaned_data', None) is None:
+                                        continue
+                                    new_title = subform.cleaned_data.get('new_lo_title')
+                                    new_desc = subform.cleaned_data.get('new_lo_description')
+                                    if new_title:
+                                        # create LO for this course
+                                        lo = LearningOutcome(course=course, title=new_title, description=new_desc, created_by=request.user)
+                                        lo.save()
+                                        # set the learning_outcome field so formset.save() links it
+                                        subform.instance.learning_outcome = lo
                                 alo_fs.instance = assessment_instance
                                 alo_fs.save()
                         return redirect("grades:teacher_dashboard")
@@ -186,6 +198,16 @@ def teacher_course_edit(request, course_id):
                             alo_fs = row['alo_fs']
                             assessment_instance = aform.instance if (aform.instance and aform.instance.pk) else (assessments[idx] if idx < len(assessments) else None)
                             if assessment_instance:
+                                # create any inline LOs teachers provided
+                                for subform in alo_fs.forms:
+                                    if getattr(subform, 'cleaned_data', None) is None:
+                                        continue
+                                    new_title = subform.cleaned_data.get('new_lo_title')
+                                    new_desc = subform.cleaned_data.get('new_lo_description')
+                                    if new_title:
+                                        lo = LearningOutcome(course=course, title=new_title, description=new_desc, created_by=request.user)
+                                        lo.save()
+                                        subform.instance.learning_outcome = lo
                                 alo_fs.instance = assessment_instance
                                 alo_fs.save()
                         return redirect("grades:teacher_dashboard")

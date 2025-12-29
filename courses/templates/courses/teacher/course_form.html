@@ -12,11 +12,13 @@
   .alo-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .alo-learning-outcome { min-width:0; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .alo-contribution { width:86px; flex:0 0 86px; }
+  .alo-new { display:flex; gap:8px; flex-direction:column; max-width:340px; }
   .alo-hidden { display:none; }
   /* small tweak for very narrow screens */
   @media (max-width:480px){
     .alo-learning-outcome { max-width:140px; }
     .alo-contribution { width:72px; flex:0 0 72px; }
+    .alo-new { max-width:200px; }
   }
 </style>
 
@@ -56,6 +58,15 @@
               <div class="alo-learning-outcome">{{ sub.learning_outcome }}</div>
               <div class="alo-contribution">{{ sub.contribution_percentage }}</div>
               <div class="ms-1">{% if sub.DELETE %}{{ sub.DELETE }}{% endif %}</div>
+
+              <div class="alo-new">
+                <a href="#" class="btn btn-sm btn-link show-new-lo">Create new LO</a>
+                <div class="new-lo-fields" style="display:none;">
+                  <div>{{ sub.new_lo_title.label_tag }} {{ sub.new_lo_title }}</div>
+                  <div>{{ sub.new_lo_description.label_tag }} {{ sub.new_lo_description }}</div>
+                </div>
+              </div>
+
             </div>
           {% endfor %}
         </div>
@@ -79,4 +90,19 @@
   <a class="btn btn-secondary" href="{% url 'grades:teacher_dashboard' %}">Cancel</a>
 </div>
 
-</form> </div> {% endblock %}
+</form> </div>
+
+<script>
+  // Simple toggle for showing new LO fields per ALO row
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('.show-new-lo').forEach(function(btn){
+      btn.addEventListener('click', function(e){
+        e.preventDefault();
+        var container = btn.closest('.alo-row').querySelector('.new-lo-fields');
+        if(container.style.display === 'none') container.style.display = 'block'; else container.style.display = 'none';
+      });
+    });
+  });
+</script>
+
+{% endblock %}

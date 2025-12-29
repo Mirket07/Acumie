@@ -22,6 +22,10 @@ class AssessmentForm(forms.ModelForm):
         widgets = {}
 
 class AssessmentLearningOutcomeForm(forms.ModelForm):
+    # Allow inline creation of a new LO if teacher wants
+    new_lo_title = forms.CharField(required=False, max_length=255)
+    new_lo_description = forms.CharField(required=False, widget=forms.Textarea(attrs={'rows':2}), max_length=2000)
+
     class Meta:
         model = AssessmentLearningOutcome
         fields = ("learning_outcome", "contribution_percentage")
@@ -29,13 +33,14 @@ class AssessmentLearningOutcomeForm(forms.ModelForm):
             'contribution_percentage': forms.NumberInput(attrs={'step': '0.01', 'min': '0', 'max': '100'})
         }
 
-AssessmentLearningOutcomeFormSet = inlineformset_factory(
-    Assessment,
-    AssessmentLearningOutcome,
-    form=AssessmentLearningOutcomeForm,
-    extra=1,
-    can_delete=True,
-)
+    def clean(self):
+        cleaned = super().clean()
+        lo = cleaned.get('learning_outcome')
+        new_title = cleaned.get('new_lo_title')
+        if not lo and not new_title:
+            raise forms.ValidationError("Select an existing Learning Outcome or provide a title to create a new one.")
+        return cleaned
+
 
 class AssessmentInlineFormSet(BaseInlineFormSet):
     def clean(self):
@@ -68,6 +73,43 @@ AssessmentFormSet = inlineformset_factory(
     Assessment,
     form=AssessmentForm,
     formset=AssessmentInlineFormSet,
+    extra=1,
+    can_delete=True,
+)
+
+# Additional FormSet clean for AssessmentLearningOutcome instances per Assessment
+class ALOBaseInlineFormSet(BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        total = Decimal("0.00")
+        seen = False
+        for form in self.forms:
+            if getattr(form, "cleaned_data", None) is None:
+                continue
+            if form.cleaned_data.get('DELETE', False):
+                continue
+            # contribution may be empty
+            contribution = form.cleaned_data.get('contribution_percentage')
+            if contribution in (None, ""):
+                continue
+            try:
+                c = Decimal(str(contribution))
+            except Exception:
+                raise forms.ValidationError("Invalid contribution percentage value.")
+            total += c
+            seen = True
+
+        if seen:
+            total = total.quantize(Decimal("0.01"))
+            if total != DECIMAL_100:
+                raise forms.ValidationError(f"Total LO contributions for this assessment must equal {DECIMAL_100}%. Current total: {total}%.")
+
+# AssessmentLearningOutcomeFormSet using our custom ALOBaseInlineFormSet
+AssessmentLearningOutcomeFormSet = inlineformset_factory(
+    Assessment,
+    AssessmentLearningOutcome,
+    form=AssessmentLearningOutcomeForm,
+    formset=ALOBaseInlineFormSet,
     extra=1,
     can_delete=True,
 )

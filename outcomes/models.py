@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.conf import settings
 
 class ProgramOutcome(models.Model):
     code = models.CharField(max_length=10, unique=True, verbose_name="PO Code")
@@ -25,7 +26,15 @@ class LearningOutcome(models.Model):
     code = models.CharField(max_length=10, verbose_name="LO Code", blank=True)
     title = models.CharField(max_length=255, verbose_name="Title")
     description = models.TextField(blank=True, verbose_name="Description")
-    
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_learning_outcomes',
+        verbose_name="Created by"
+    )
+
     program_outcomes = models.ManyToManyField(
         ProgramOutcome,
         through='LO_PO_Contribution',
