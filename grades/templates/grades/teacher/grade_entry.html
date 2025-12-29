@@ -1,26 +1,74 @@
 {% extends "base.html" %}
+{% load grade_extras %}
+
+{% block title %}Enter Grades - {{ course.code }}{% endblock %}
+
 {% block content %}
 <div class="container py-4">
-  <h3>Grade entry — {{ course.code }} / {{ assessment.get_type_display }}</h3>
-  <p>LOs: {% for lo in los %}{{ lo.code }} {% endfor %}</p>
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h2 class="mb-0">Enter Grades — {{ course.code }} {{ course.title }}</h2>
+      <small class="text-muted">Enter student scores for each assessment</small>
+    </div>
+    <div>
+      <a href="{% url 'grades:teacher_dashboard' %}" class="btn btn-secondary btn-sm">Back to Dashboard</a>
+    </div>
+  </div>
+
   <form method="post">
     {% csrf_token %}
-    {{ formset.management_form }}
-    <table class="table table-sm">
-      <thead><tr><th>Student</th><th>LO</th><th>Score (%)</th><th>Mastery (1-5)</th></tr></thead>
-      <tbody>
-        {% for form in formset %}
+
+    <div class="table-responsive">
+      <table class="table table-bordered table-sm align-middle">
+        <thead class="table-light">
           <tr>
-            <td>{{ form.instance.student.get_full_name|default:form.instance.student.username }}</td>
-            <td>{{ form.instance.learning_outcome.code }}</td>
-            <td>{{ form.score_percentage }}</td>
-            <td>{{ form.lo_mastery_score }}</td>
+            <th style="min-width: 240px;">Student</th>
+            {% for assessment in assessments %}
+              <th class="text-center">
+                {{ assessment.get_type_display }}<br>
+                <small class="text-muted">{{ assessment.weight_percentage }}%</small>
+              </th>
+            {% endfor %}
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <button class="btn btn-primary" type="submit">Save grades</button>
-    <a class="btn btn-secondary" href="{% url 'grades:teacher_grade_bulk_upload' course.id %}">Bulk upload CSV</a>
+        </thead>
+
+        <tbody>
+          {% for student in students %}
+            <tr>
+              <td class="text-start fw-bold">{{ student.get_full_name|default:student.username }}</td>
+
+              {% for assessment in assessments %}
+                {% with student_scores=scores|get_item:student.id %}
+                  <td class="text-center">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      name="score_{{ student.id }}_{{ assessment.id }}"
+                      value="{{ student_scores|get_item:assessment.id }}"
+                      class="form-control form-control-sm text-center"
+                    >
+                  </td>
+                {% endwith %}
+              {% endfor %}
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="{{ assessments|length|add:1 }}" class="text-center">
+                No students enrolled in this course.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+      <button type="submit" class="btn btn-success">Save Grades</button>
+      <a href="{% url 'grades:teacher_dashboard' %}" class="btn btn-outline-secondary">Back to Dashboard</a>
+      <a href="{% url 'grades:teacher_grade_bulk_upload' course.id %}" class="btn btn-link">Bulk upload</a>
+    </div>
   </form>
 </div>
 {% endblock %}

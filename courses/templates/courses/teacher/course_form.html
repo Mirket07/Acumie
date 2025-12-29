@@ -1,67 +1,82 @@
 {% extends "base.html" %}
-{% block title %}{% if is_create %}Create Course{% else %}Edit Course{% endif %}{% endblock %}
+{% block title %}{% if is_create %}Create Course{% else %}Edit Course{% endif %} - ACUmie{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-  <h2>{% if is_create %}Create Course{% else %}Edit Course: {{ course.code }}{% endif %}</h2>
 
-  <form method="post">
-    {% csrf_token %}
-    <div class="card mb-3">
-      <div class="card-body">
-        {{ form.non_field_errors }}
-        <div class="mb-3">
-          {{ form.code.label_tag }}{{ form.code }}
-          {% for err in form.code.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
-        </div>
-        <div class="mb-3">
-          {{ form.title.label_tag }}{{ form.title }}
-          {% for err in form.title.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
-        </div>
-        <div class="mb-3">
-          {{ form.ects_credit.label_tag }}{{ form.ects_credit }}
-          {% for err in form.ects_credit.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
-        </div>
-        {{ form.instructor }}
+<div class="container py-4"> <h2 class="mb-3">{% if is_create %}Create Course{% else %}Edit Course{% endif %}</h2> <form method="post"> {% csrf_token %} <div class="mb-3"> <div class="row g-3"> <div class="col-md-3"> <label class="form-label">Code</label> {{ form.code }} {{ form.code.errors }} </div> <div class="col-md-6"> <label class="form-label">Title</label> {{ form.title }} {{ form.title.errors }} </div> <div class="col-md-3"> <label class="form-label">ECTS</label> {{ form.ects_credit }} {{ form.ects_credit.errors }} </div> </div> </div>
+<hr>
+
+<style>
+  /* Constrain LO controls to prevent overflow; keep simple responsive layout */
+  .alo-list { display:flex; flex-direction:column; gap:6px; }
+  .alo-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .alo-learning-outcome { min-width:0; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .alo-contribution { width:86px; flex:0 0 86px; }
+  .alo-hidden { display:none; }
+  /* small tweak for very narrow screens */
+  @media (max-width:480px){
+    .alo-learning-outcome { max-width:140px; }
+    .alo-contribution { width:72px; flex:0 0 72px; }
+  }
+</style>
+
+<h5>Assessments (total must equal 100%)</h5>
+{{ formset.management_form }}
+{% for row in assessment_rows %}
+  {% with form=row.form alo_fs=row.alo_fs %}
+  <div class="card mb-2 p-3">
+    <div class="row g-2 align-items-center">
+      <div class="col-md-3">
+        <label class="form-label">Type</label>
+        {{ form.type }}
+        {{ form.type.errors }}
       </div>
-    </div>
+      <div class="col-md-2">
+        <label class="form-label">Weight (%)</label>
+        {{ form.weight_percentage }}
+        {{ form.weight_percentage.errors }}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Label / Name</label>
+        {{ form.name }}
+        {{ form.name.errors }}
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Learning Outcomes (optional)</label>
+        {% if alo_fs.management_form %}
+          {{ alo_fs.management_form }}
+        {% endif %}
+        <div class="alo-list">
+          {% for sub in alo_fs.forms %}
+            <div class="alo-row">
+              {% for hidden in sub.hidden_fields %}
+                <span class="alo-hidden">{{ hidden }}</span>
+              {% endfor %}
 
-    <h4>Assessments</h4>
-    {{ formset.non_form_errors }}
-    {{ formset.management_form }}
-    <div class="list-group mb-3">
-      {% for form in formset %}
-        <div class="list-group-item mb-2">
-          {{ form.id }}
-          <div class="row">
-            <div class="col-md-3">
-              {{ form.type.label_tag }}{{ form.type }}
+              <div class="alo-learning-outcome">{{ sub.learning_outcome }}</div>
+              <div class="alo-contribution">{{ sub.contribution_percentage }}</div>
+              <div class="ms-1">{% if sub.DELETE %}{{ sub.DELETE }}{% endif %}</div>
             </div>
-            <div class="col-md-3">
-              {{ form.weight_percentage.label_tag }}{{ form.weight_percentage }}
-            </div>
-            <div class="col-md-5">
-              {{ form.learning_outcomes.label_tag }}{{ form.learning_outcomes }}
-            </div>
-            <div class="col-md-1">
-              {% if form.instance.pk %}
-                {{ form.DELETE }} <small class="text-muted">Delete</small>
-              {% else %}
-                {{ form.DELETE }} <small class="text-muted">Delete</small>
-              {% endif %}
-            </div>
-          </div>
-          {% for field in form.visible_fields %}
-            {% for err in field.errors %}
-              <div class="text-danger small mt-1">{{ err }}</div>
-            {% endfor %}
           {% endfor %}
         </div>
-      {% endfor %}
+        {{ alo_fs.non_field_errors }}
+      </div>
+      <div class="col-md-1 text-end">
+        {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+        {% if form.instance.pk %}
+          <label class="form-check-label">Remove</label><br>
+          {{ form.DELETE }}
+        {% endif %}
+      </div>
     </div>
+    {{ form.non_field_errors }}
+  </div>
+  {% endwith %}
+{% endfor %}
 
-    <button class="btn btn-primary" type="submit">Save</button>
-    <a class="btn btn-secondary" href="{% url 'grades:teacher_dashboard' %}">Cancel</a>
-  </form>
+<div class="mt-3">
+  <button class="btn btn-primary" type="submit">Save</button>
+  <a class="btn btn-secondary" href="{% url 'grades:teacher_dashboard' %}">Cancel</a>
 </div>
-{% endblock %}
+
+</form> </div> {% endblock %}

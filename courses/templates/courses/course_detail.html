@@ -10,8 +10,15 @@
     <div class="p-5 text-white bg-dark" style="background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);">
         <div class="container">
             <span class="badge bg-success mb-2">ECTS: {{ course.ects_credit }}</span>
-            <h1 class="display-5 fw-bold">{{ course.code }} - {{ course.title }}</h1>
-            <p class="lead mb-0"><i class="bi bi-person-circle"></i> {{ course.instructor.get_full_name|default:"Instructor Name" }}</p>
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <h1 class="display-5 fw-bold">{{ course.code }} - {{ course.title }}</h1>
+                <p class="lead mb-0"><i class="bi bi-person-circle"></i> {{ course.instructor.get_full_name|default:"Instructor Name" }}</p>
+              </div>
+             {% if is_instructor %}
+              <!-- Add Material removed -->
+             {% endif %}
+            </div>
         </div>
     </div>
     

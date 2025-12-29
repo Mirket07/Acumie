@@ -1,0 +1,15 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+{% block content %}
+  <h1>Bulk enroll students (CSV)</h1>
+  <p>CSV must include columns: <strong>course_code</strong> and one of <strong>username</strong> or <strong>email</strong>.</p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="csv_file">CSV file</label>
+      <input type="file" name="csv_file" id="csv_file" accept=".csv" class="form-control">
+    </div>
+    <button class="btn btn-primary" type="submit">Upload and enroll</button>
+    <a class="btn btn-secondary" href="{% url 'admin:courses_enrollment_changelist' %}">Back to enrollments</a>
+  </form>
+{% endblock %}

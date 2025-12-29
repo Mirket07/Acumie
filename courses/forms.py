@@ -2,7 +2,7 @@ from django import forms
 from decimal import Decimal
 from django.forms.models import inlineformset_factory, BaseInlineFormSet
 from .models import Course, Assessment
-from outcomes.models import LearningOutcome
+from .models import AssessmentLearningOutcome
 
 DECIMAL_100 = Decimal("100.00")
 DECIMAL_ZERO = Decimal("0.00")
@@ -18,10 +18,24 @@ class CourseForm(forms.ModelForm):
 class AssessmentForm(forms.ModelForm):
     class Meta:
         model = Assessment
-        fields = ("type", "weight_percentage", "learning_outcomes")
+        fields = ("type", "weight_percentage", "name")
+        widgets = {}
+
+class AssessmentLearningOutcomeForm(forms.ModelForm):
+    class Meta:
+        model = AssessmentLearningOutcome
+        fields = ("learning_outcome", "contribution_percentage")
         widgets = {
-            "learning_outcomes": forms.SelectMultiple(attrs={"size": 6})
+            'contribution_percentage': forms.NumberInput(attrs={'step': '0.01', 'min': '0', 'max': '100'})
         }
+
+AssessmentLearningOutcomeFormSet = inlineformset_factory(
+    Assessment,
+    AssessmentLearningOutcome,
+    form=AssessmentLearningOutcomeForm,
+    extra=1,
+    can_delete=True,
+)
 
 class AssessmentInlineFormSet(BaseInlineFormSet):
     def clean(self):
