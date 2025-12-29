@@ -1,295 +1,68 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import FieldDoesNotExist
-from django.shortcuts import redirect
 from django.db import transaction
 from django.http import HttpResponseForbidden
-from .forms import CourseForm, AssessmentFormSet, AssessmentLearningOutcomeFormSet
+from django.contrib import messages
+from .forms import CourseForm, AssessmentFormSet, AssessmentLearningOutcomeFormSet, LearningOutcomeFormSet
 from .models import Course
 from grades.models import Grade
-from feedback.models import FeedbackRequest
 from outcomes.models import LearningOutcome
-from django import forms
-from django.shortcuts import reverse
-from django.core.files.storage import default_storage
 
 @login_required
 def course_detail_view(request, course_id):
     course = get_object_or_404(Course, id=course_id)
-    
-    sections = course.sections.prefetch_related('materials').all()
-    
-    participants = course.enrollments.select_related('student').all()
-
-    learning_outcomes = (
-        LearningOutcome.objects
-        .filter(assessments__course=course)
-        .distinct()
-        .order_by('code')
-    )
-
-    requested_assessment_ids = []
-    teacher_feedback_requests = []
-    student_grades = []
-
-    user = request.user
-
-    try:
-        Grade._meta.get_field('learning_outcome')
-        has_learning_outcome = True
-    except FieldDoesNotExist:
-        has_learning_outcome = False
-
-    if getattr(user, "role", "") == 'STUDENT':
-        qs = Grade.objects.filter(
-            student=user,
-            assessment__course=course
-        ).select_related('assessment', 'student')
-
-        if has_learning_outcome:
-            qs = qs.prefetch_related('learning_outcome').order_by('assessment__type', 'learning_outcome__code')
-        else:
-            qs = qs.order_by('assessment__type')
-
-        student_grades = qs
-
-        requested_assessment_ids = list(
-            FeedbackRequest.objects
-            .filter(student=user, assessment__course=course)
-            .values_list('assessment_id', flat=True)
-            .distinct()
-        )
-        is_instructor = False
-
-    elif getattr(user, "role", "") == 'INSTRUCTOR' or user.is_staff:
-        qs = Grade.objects.filter(assessment__course=course).select_related('assessment', 'student')
-
-        if has_learning_outcome:
-            qs = qs.prefetch_related('learning_outcome').order_by('student__first_name', 'assessment__type', 'learning_outcome__code')
-        else:
-            qs = qs.order_by('student__first_name', 'assessment__type')
-
-        student_grades = qs
-        is_instructor = True
-
-        teacher_feedback_requests = (
-            FeedbackRequest.objects
-            .select_related('student', 'assessment', 'assessment__course')
-            .filter(assessment__course=course, is_resolved=False)
-            .order_by('-request_date')
-        )
-    else:
-        student_grades = []
-        is_instructor = False
-
-
-    context = {
+    return render(request, 'courses/course_detail.html', {
         'course': course,
-        'sections': sections,
-        'student_grades': student_grades,
-        'is_instructor': is_instructor,
-        'requested_assessment_ids': requested_assessment_ids,
-        'learning_outcomes': learning_outcomes,
-        'participants': participants, 
-        'teacher_feedback_requests': teacher_feedback_requests, 
-    }
-
-    return render(request, 'courses/course_detail.html', context)
-
+        'sections': course.sections.all(),
+        'participants': course.enrollments.all(),
+        'learning_outcomes': LearningOutcome.objects.filter(course=course).order_by('code'),
+        'student_grades': Grade.objects.filter(assessment__course=course),
+        'is_instructor': (request.user.is_staff or course.instructor == request.user)
+    })
 
 @login_required
 def teacher_course_create(request):
-    user = request.user
-    if not (user.is_staff or getattr(user, "role", "") == "INSTRUCTOR"):
-        return HttpResponseForbidden("You are not allowed to create courses.")
-
+    if not (request.user.is_staff or getattr(request.user, "role", "") == "INSTRUCTOR"): return HttpResponseForbidden()
     if request.method == "POST":
         form = CourseForm(request.POST)
         formset = AssessmentFormSet(request.POST)
-        assessment_rows = []
-        if form.is_valid() and formset.is_valid():
-            # Build and validate ALO formsets for each assessment form index
-            valid = True
-            for i, aform in enumerate(formset.forms):
-                prefix = f'assessmentlearningoutcome-{i}'
-                alo_fs = AssessmentLearningOutcomeFormSet(request.POST, prefix=prefix)
-                assessment_rows.append({'form': aform, 'alo_fs': alo_fs})
-                if not alo_fs.is_valid():
-                    valid = False
-            if valid:
-                try:
-                    with transaction.atomic():
-                        course = form.save(commit=False)
-                        if not user.is_staff:
-                            course.instructor = user
-                        else:
-                            if not course.instructor:
-                                course.instructor = user
-                        course.save()
-                        formset.instance = course
-                        assessments = formset.save()
-                        # Save ALOs; map created assessments by order
-                        for idx, row in enumerate(assessment_rows):
-                            aform = row['form']
-                            alo_fs = row['alo_fs']
-                            assessment_instance = aform.instance if (aform.instance and aform.instance.pk) else (assessments[idx] if idx < len(assessments) else None)
-                            if assessment_instance:
-                                # handle inline new LOs
-                                for subform in alo_fs.forms:
-                                    if getattr(subform, 'cleaned_data', None) is None:
-                                        continue
-                                    new_title = subform.cleaned_data.get('new_lo_title')
-                                    new_desc = subform.cleaned_data.get('new_lo_description')
-                                    if new_title:
-                                        # create LO for this course
-                                        lo = LearningOutcome(course=course, title=new_title, description=new_desc, created_by=request.user)
-                                        lo.save()
-                                        # set the learning_outcome field so formset.save() links it
-                                        subform.instance.learning_outcome = lo
-                                alo_fs.instance = assessment_instance
-                                alo_fs.save()
-                        return redirect("grades:teacher_dashboard")
-                except Exception as e:
-                    form.add_error(None, f"Error saving course: {e}")
+        lo_formset = LearningOutcomeFormSet(request.POST)
+        if form.is_valid() and formset.is_valid() and lo_formset.is_valid():
+            try:
+                with transaction.atomic():
+                    course = form.save(commit=False); course.instructor = request.user; course.save()
+                    lo_formset.instance = course; lo_formset.save()
+                    formset.instance = course; formset.save()
+                    for i, a_form in enumerate(formset.forms):
+                        if a_form.instance.pk and not a_form.cleaned_data.get('DELETE'):
+                            alo_fs = AssessmentLearningOutcomeFormSet(request.POST, instance=a_form.instance, prefix=f'assessmentlearningoutcome-{i}')
+                            if alo_fs.is_valid(): alo_fs.save()
+                    messages.success(request, "Course created successfully.")
+                    return redirect("grades:teacher_dashboard")
+            except Exception as e: messages.error(request, f"Error: {e}")
     else:
-        form = CourseForm()
-        formset = AssessmentFormSet()
-        assessment_rows = []
-        for i, aform in enumerate(formset.forms):
-            prefix = f'assessmentlearningoutcome-{i}'
-            assessment_rows.append({'form': aform, 'alo_fs': AssessmentLearningOutcomeFormSet(prefix=prefix)})
-
-    return render(request, "courses/teacher/course_form.html", {
-        "form": form,
-        "formset": formset,
-        "assessment_rows": assessment_rows,
-        "is_create": True,
-    })
-
+        form = CourseForm(initial={'instructor': request.user}); formset = AssessmentFormSet(); lo_formset = LearningOutcomeFormSet()
+    rows = [{'form': f, 'alo_fs': AssessmentLearningOutcomeFormSet(prefix=f'assessmentlearningoutcome-{i}')} for i, f in enumerate(formset.forms)]
+    return render(request, "courses/teacher/course_form.html", {"form": form, "formset": formset, "lo_formset": lo_formset, "assessment_rows": rows, "is_create": True})
 
 @login_required
 def teacher_course_edit(request, course_id):
     course = get_object_or_404(Course, pk=course_id)
-    user = request.user
-    if not (user.is_staff or (course.instructor and course.instructor.id == user.id) or getattr(user, "role", "") == "INSTRUCTOR" and course.instructor is None):
-        return HttpResponseForbidden("You are not allowed to edit this course.")
-
+    if not (request.user.is_staff or course.instructor == request.user): return HttpResponseForbidden()
     if request.method == "POST":
-        form = CourseForm(request.POST, instance=course)
-        formset = AssessmentFormSet(request.POST, instance=course)
-        assessment_rows = []
-        if form.is_valid() and formset.is_valid():
-            valid = True
-            for i, aform in enumerate(formset.forms):
-                prefix = f'assessmentlearningoutcome-{i}'
-                obj_pk = aform.instance.pk if aform.instance and aform.instance.pk else None
-                alo_fs = AssessmentLearningOutcomeFormSet(request.POST, instance=(aform.instance if obj_pk else None), prefix=prefix)
-                assessment_rows.append({'form': aform, 'alo_fs': alo_fs})
-                if not alo_fs.is_valid():
-                    valid = False
-            if valid:
-                try:
-                    with transaction.atomic():
-                        course = form.save(commit=False)
-                        if not user.is_staff:
-                            course.instructor = user
-                        course.save()
-                        formset.instance = course
-                        assessments = formset.save()
-                        for idx, row in enumerate(assessment_rows):
-                            aform = row['form']
-                            alo_fs = row['alo_fs']
-                            assessment_instance = aform.instance if (aform.instance and aform.instance.pk) else (assessments[idx] if idx < len(assessments) else None)
-                            if assessment_instance:
-                                # create any inline LOs teachers provided
-                                for subform in alo_fs.forms:
-                                    if getattr(subform, 'cleaned_data', None) is None:
-                                        continue
-                                    new_title = subform.cleaned_data.get('new_lo_title')
-                                    new_desc = subform.cleaned_data.get('new_lo_description')
-                                    if new_title:
-                                        lo = LearningOutcome(course=course, title=new_title, description=new_desc, created_by=request.user)
-                                        lo.save()
-                                        subform.instance.learning_outcome = lo
-                                alo_fs.instance = assessment_instance
-                                alo_fs.save()
-                        return redirect("grades:teacher_dashboard")
-                except Exception as e:
-                    form.add_error(None, f"Error saving course: {e}")
+        form = CourseForm(request.POST, instance=course); formset = AssessmentFormSet(request.POST, instance=course); lo_formset = LearningOutcomeFormSet(request.POST, instance=course)
+        if form.is_valid() and formset.is_valid() and lo_formset.is_valid():
+            try:
+                with transaction.atomic():
+                    form.save(); lo_formset.save(); formset.save()
+                    for i, a_form in enumerate(formset.forms):
+                        if a_form.instance.pk:
+                            alo_fs = AssessmentLearningOutcomeFormSet(request.POST, instance=a_form.instance, prefix=f'assessmentlearningoutcome-{i}')
+                            if alo_fs.is_valid(): alo_fs.save()
+                    messages.success(request, "Course updated.")
+                    return redirect("grades:teacher_dashboard")
+            except Exception as e: messages.error(request, f"Error: {e}")
     else:
-        form = CourseForm(instance=course)
-        formset = AssessmentFormSet(instance=course)
-        assessment_rows = []
-        for i, aform in enumerate(formset.forms):
-            prefix = f'assessmentlearningoutcome-{i}'
-            if aform.instance and aform.instance.pk:
-                assessment_rows.append({'form': aform, 'alo_fs': AssessmentLearningOutcomeFormSet(instance=aform.instance, prefix=prefix)})
-            else:
-                assessment_rows.append({'form': aform, 'alo_fs': AssessmentLearningOutcomeFormSet(prefix=prefix)})
-
-    return render(request, "courses/teacher/course_form.html", {
-        "form": form,
-        "formset": formset,
-        "assessment_rows": assessment_rows,
-        "is_create": False,
-        "course": course,
-    })
-
-
-class MaterialUploadForm(forms.Form):
-    section = forms.ModelChoiceField(queryset=None, required=False)
-    title = forms.CharField(max_length=200, required=False)
-    file = forms.FileField(required=False)
-    link = forms.URLField(required=False)
-
-    def __init__(self, *args, **kwargs):
-        course = kwargs.pop('course', None)
-        super().__init__(*args, **kwargs)
-        if course is not None:
-            self.fields['section'].queryset = course.sections.all()
-            self.fields['section'].required = False
-
-
-@login_required
-def teacher_add_material(request, course_id):
-    course = get_object_or_404(Course, pk=course_id)
-    user = request.user
-    if not (user.is_staff or (course.instructor and course.instructor_id == user.id)):
-        return HttpResponseForbidden()
-
-    if request.method == 'POST':
-        form = MaterialUploadForm(request.POST, request.FILES, course=course)
-        if form.is_valid():
-            section = form.cleaned_data.get('section')
-            title = form.cleaned_data.get('title') or (form.cleaned_data.get('file').name if form.cleaned_data.get('file') else 'Material')
-            fileobj = form.cleaned_data.get('file')
-            link = form.cleaned_data.get('link')
-
-            if not section:
-                # ensure a default section exists
-                section, _ = course.sections.get_or_create(title='General')
-
-            cm = None
-            if fileobj:
-                cm = course.sections.model.materials.related_model.objects.create(
-                    section=section,
-                    title=title,
-                    type='SLIDE',
-                    uploaded_file=fileobj,
-                )
-            elif link:
-                cm = course.sections.model.materials.related_model.objects.create(
-                    section=section,
-                    title=title,
-                    type='LINK',
-                    link=link,
-                )
-
-            if cm:
-                return redirect('courses:detail', course.id)
-            else:
-                form.add_error(None, 'Please provide a file or a link.')
-    else:
-        form = MaterialUploadForm(course=course)
-
-    return render(request, 'courses/teacher/add_material.html', {'course': course, 'form': form})
+        form = CourseForm(instance=course); formset = AssessmentFormSet(instance=course); lo_formset = LearningOutcomeFormSet(instance=course)
+    rows = [{'form': f, 'alo_fs': AssessmentLearningOutcomeFormSet(instance=f.instance if f.instance.pk else None, prefix=f'assessmentlearningoutcome-{i}')} for i, f in enumerate(formset.forms)]
+    return render(request, "courses/teacher/course_form.html", {"form": form, "formset": formset, "lo_formset": lo_formset, "assessment_rows": rows, "is_create": False, "course": course})
