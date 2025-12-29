@@ -4,7 +4,7 @@ from django.core.exceptions import FieldDoesNotExist
 from django.shortcuts import redirect
 from django.db import transaction
 from django.http import HttpResponseForbidden
-from .forms import CourseForm, AssessmentFormSet
+from .forms import CourseForm, AssessmentFormSet, AssessmentLearningOutcomeFormSet
 from .models import Course
 from grades.models import Grade
 from feedback.models import FeedbackRequest
@@ -103,29 +103,51 @@ def teacher_course_create(request):
     if request.method == "POST":
         form = CourseForm(request.POST)
         formset = AssessmentFormSet(request.POST)
+        assessment_rows = []
         if form.is_valid() and formset.is_valid():
-            try:
-                with transaction.atomic():
-                    course = form.save(commit=False)
-                    if not user.is_staff:
-                        course.instructor = user
-                    else:
-                        if not course.instructor:
+            # Build and validate ALO formsets for each assessment form index
+            valid = True
+            for i, aform in enumerate(formset.forms):
+                prefix = f'assessmentlearningoutcome-{i}'
+                alo_fs = AssessmentLearningOutcomeFormSet(request.POST, prefix=prefix)
+                assessment_rows.append({'form': aform, 'alo_fs': alo_fs})
+                if not alo_fs.is_valid():
+                    valid = False
+            if valid:
+                try:
+                    with transaction.atomic():
+                        course = form.save(commit=False)
+                        if not user.is_staff:
                             course.instructor = user
-                    course.save()
-                    formset.instance = course
-                    formset.save()
-                return redirect("grades:teacher_dashboard")
-            except Exception as e:
-                form.add_error(None, f"Error saving course: {e}")
+                        else:
+                            if not course.instructor:
+                                course.instructor = user
+                        course.save()
+                        formset.instance = course
+                        assessments = formset.save()
+                        # Save ALOs; map created assessments by order
+                        for idx, row in enumerate(assessment_rows):
+                            aform = row['form']
+                            alo_fs = row['alo_fs']
+                            assessment_instance = aform.instance if (aform.instance and aform.instance.pk) else (assessments[idx] if idx < len(assessments) else None)
+                            if assessment_instance:
+                                alo_fs.instance = assessment_instance
+                                alo_fs.save()
+                        return redirect("grades:teacher_dashboard")
+                except Exception as e:
+                    form.add_error(None, f"Error saving course: {e}")
     else:
-        initial = {}
-        form = CourseForm(initial=initial)
+        form = CourseForm()
         formset = AssessmentFormSet()
+        assessment_rows = []
+        for i, aform in enumerate(formset.forms):
+            prefix = f'assessmentlearningoutcome-{i}'
+            assessment_rows.append({'form': aform, 'alo_fs': AssessmentLearningOutcomeFormSet(prefix=prefix)})
 
     return render(request, "courses/teacher/course_form.html", {
         "form": form,
         "formset": formset,
+        "assessment_rows": assessment_rows,
         "is_create": True,
     })
 
@@ -140,26 +162,50 @@ def teacher_course_edit(request, course_id):
     if request.method == "POST":
         form = CourseForm(request.POST, instance=course)
         formset = AssessmentFormSet(request.POST, instance=course)
+        assessment_rows = []
         if form.is_valid() and formset.is_valid():
-            try:
-                with transaction.atomic():
-                    course = form.save(commit=False)
-                    if not user.is_staff:
-                        course.instructor = user
-                    course.save()
-                    formset.instance = course
-                    formset.save()
-                return redirect("grades:teacher_dashboard")
-            except Exception as e:
-                form.add_error(None, f"Error saving course: {e}")
+            valid = True
+            for i, aform in enumerate(formset.forms):
+                prefix = f'assessmentlearningoutcome-{i}'
+                obj_pk = aform.instance.pk if aform.instance and aform.instance.pk else None
+                alo_fs = AssessmentLearningOutcomeFormSet(request.POST, instance=(aform.instance if obj_pk else None), prefix=prefix)
+                assessment_rows.append({'form': aform, 'alo_fs': alo_fs})
+                if not alo_fs.is_valid():
+                    valid = False
+            if valid:
+                try:
+                    with transaction.atomic():
+                        course = form.save(commit=False)
+                        if not user.is_staff:
+                            course.instructor = user
+                        course.save()
+                        formset.instance = course
+                        assessments = formset.save()
+                        for idx, row in enumerate(assessment_rows):
+                            aform = row['form']
+                            alo_fs = row['alo_fs']
+                            assessment_instance = aform.instance if (aform.instance and aform.instance.pk) else (assessments[idx] if idx < len(assessments) else None)
+                            if assessment_instance:
+                                alo_fs.instance = assessment_instance
+                                alo_fs.save()
+                        return redirect("grades:teacher_dashboard")
+                except Exception as e:
+                    form.add_error(None, f"Error saving course: {e}")
     else:
         form = CourseForm(instance=course)
         formset = AssessmentFormSet(instance=course)
+        assessment_rows = []
+        for i, aform in enumerate(formset.forms):
+            prefix = f'assessmentlearningoutcome-{i}'
+            if aform.instance and aform.instance.pk:
+                assessment_rows.append({'form': aform, 'alo_fs': AssessmentLearningOutcomeFormSet(instance=aform.instance, prefix=prefix)})
+            else:
+                assessment_rows.append({'form': aform, 'alo_fs': AssessmentLearningOutcomeFormSet(prefix=prefix)})
 
     return render(request, "courses/teacher/course_form.html", {
         "form": form,
         "formset": formset,
+        "assessment_rows": assessment_rows,
         "is_create": False,
         "course": course,
     })
-

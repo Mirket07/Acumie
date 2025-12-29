@@ -7,7 +7,7 @@ from django.shortcuts import render, redirect
 from django.db import transaction
 import csv, io
 
-from .models import Course, Assessment, CourseSection, CourseMaterial, Enrollment
+from .models import Course, Assessment, CourseSection, CourseMaterial, Enrollment, AssessmentLearningOutcome
 
 
 class AssessmentInlineFormSet(BaseInlineFormSet):
@@ -61,6 +61,12 @@ class EnrollmentInline(admin.TabularInline):
     readonly_fields = ('enrolled_at',)
 
 
+class AssessmentLearningOutcomeInline(admin.TabularInline):
+    model = AssessmentLearningOutcome
+    extra = 0
+    fields = ('learning_outcome', 'contribution_percentage')
+
+
 @admin.register(CourseSection)
 class CourseSectionAdmin(admin.ModelAdmin):
     list_display = ('course', 'title', 'order')
@@ -71,6 +77,7 @@ class CourseSectionAdmin(admin.ModelAdmin):
 class AssessmentAdmin(admin.ModelAdmin):
     list_display = ('course', 'type', 'name', 'weight_percentage')
     list_filter = ('course', 'type')
+    inlines = [AssessmentLearningOutcomeInline]
     # don't use filter_horizontal or inlines for learning_outcomes if the M2M uses a manual through model
 
 

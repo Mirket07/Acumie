@@ -8,7 +8,8 @@
 
 <h5>Assessments (total must equal 100%)</h5>
 {{ formset.management_form }}
-{% for form in formset %}
+{% for row in assessment_rows %}
+  {% with form=row.form alo_fs=row.alo_fs %}
   <div class="card mb-2 p-3">
     <div class="row g-2 align-items-center">
       <div class="col-md-3">
@@ -27,11 +28,16 @@
         {{ form.name.errors }}
       </div>
       <div class="col-md-2">
-        {% if form.learning_outcomes %}
-          <label class="form-label">Learning Outcomes</label>
-          {{ form.learning_outcomes }}
-          {{ form.learning_outcomes.errors }}
-        {% endif %}
+        <label class="form-label">Learning Outcomes (optional)</label>
+        {% for sub in alo_fs.forms %}
+          <div class="d-flex gap-2 mb-1">
+            {{ sub.learning_outcome }}
+            {{ sub.contribution_percentage }}%
+            {% if sub.DELETE %}{{ sub.DELETE }}{% endif %}
+          </div>
+        {% endfor %}
+        {{ alo_fs.management_form }}
+        {{ alo_fs.non_field_errors }}
       </div>
       <div class="col-md-1 text-end">
         {% if form.instance.pk %}
@@ -42,6 +48,7 @@
     </div>
     {{ form.non_field_errors }}
   </div>
+  {% endwith %}
 {% endfor %}
 
 <div class="mt-3">
