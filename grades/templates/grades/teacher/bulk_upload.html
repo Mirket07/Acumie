@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container py-4">
-  <h3>Bulk upload grades — {{ course.code }}</h3>
+  <div class="mb-3 d-flex justify-content-between align-items-center">
+    <h3 class="mb-0">Bulk upload grades — {{ course.code }}</h3>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'grades:teacher_grade_entry' course.id %}">Back to grade entry</a>
+  </div>
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="mb-3">
@@ -9,8 +12,9 @@
       <input class="form-control" type="file" name="csv_file" accept=".csv">
       <div class="form-text">Expected columns: student_username, assessment_id, lo_code, score_percentage, lo_mastery_score</div>
     </div>
-    <button class="btn btn-primary" type="submit">Upload</button>
-    <a class="btn btn-link" href="{% url 'grades:teacher_grade_entry' course.id %}">Back to grade entry</a>
+    <div>
+      <button class="btn btn-primary" type="submit">Upload</button>
+    </div>
   </form>
 </div>
 {% endblock %}
