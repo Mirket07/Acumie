@@ -67,7 +67,7 @@
     <div class="mt-3 d-flex gap-2">
       <button type="submit" class="btn btn-success">Save Grades</button>
       <a href="{% url 'grades:teacher_dashboard' %}" class="btn btn-outline-secondary">Back to Dashboard</a>
-      <a href="{% url 'grades:teacher_bulk_upload' course.id %}" class="btn btn-link">Bulk upload</a>
+      <a href="{% url 'grades:teacher_grade_bulk_upload' course.id %}" class="btn btn-link">Bulk upload</a>
     </div>
   </form>
 </div>
