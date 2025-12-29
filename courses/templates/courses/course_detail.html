@@ -16,9 +16,7 @@
                 <p class="lead mb-0"><i class="bi bi-person-circle"></i> {{ course.instructor.get_full_name|default:"Instructor Name" }}</p>
               </div>
              {% if is_instructor %}
-              <div class="ms-3">
-                <a class="btn btn-sm btn-outline-info" href="{% url 'courses:teacher_add_material' course.id %}">Add Material</a>
-              </div>
+              <!-- Add Material removed -->
              {% endif %}
             </div>
         </div>

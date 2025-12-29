@@ -25,7 +25,7 @@
             <div class="mt-auto d-flex gap-2">
               <a class="btn btn-sm btn-outline-primary flex-grow-1" href="{% url 'courses:detail' c.id %}">View</a>
               <a class="btn btn-sm btn-outline-secondary" href="{% url 'courses:teacher_course_edit' c.id %}">Edit</a>
-              <a class="btn btn-sm btn-outline-info" href="{% url 'courses:teacher_add_material' c.id %}">Add Material</a>
+
               <a class="btn btn-sm btn-success" href="{% url 'grades:teacher_grade_entry' c.id %}">Enter Grades</a>
             </div>
           </div>

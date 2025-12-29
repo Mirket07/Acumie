@@ -4,9 +4,8 @@ from django.core.exceptions import FieldDoesNotExist
 from django.shortcuts import redirect
 from django.db import transaction
 from django.http import HttpResponseForbidden
-from django.contrib import messages
-from .forms import CourseForm, AssessmentFormSet, AssessmentLearningOutcomeFormSet, CourseMaterialForm
-from .models import Course, CourseSection
+from .forms import CourseForm, AssessmentFormSet, AssessmentLearningOutcomeFormSet
+from .models import Course
 from grades.models import Grade
 from feedback.models import FeedbackRequest
 from outcomes.models import LearningOutcome
@@ -212,35 +211,4 @@ def teacher_course_edit(request, course_id):
     })
 
 
-@login_required
-def teacher_add_material(request, course_id):
-    course = get_object_or_404(Course, pk=course_id)
-    user = request.user
-    # permission: staff or course instructor
-    if not (user.is_staff or (course.instructor and course.instructor_id == user.id)):
-        return HttpResponseForbidden()
-
-    if request.method == 'POST':
-        form = CourseMaterialForm(request.POST)
-        # restrict section choices to this course even on POST (/invalid)
-        form.fields['section'].queryset = CourseSection.objects.filter(course=course)
-        if form.is_valid():
-            new_section_title = form.cleaned_data.get('new_section_title')
-            section = form.cleaned_data.get('section')
-            if new_section_title:
-                section = CourseSection.objects.create(course=course, title=new_section_title)
-            # ensure section belongs to course
-            if section.course_id != course.id:
-                form.add_error('section', 'Selected section does not belong to this course.')
-            else:
-                material = form.save(commit=False)
-                material.section = section
-                material.save()
-                messages.success(request, 'Material added.')
-                return redirect('courses:detail', course_id=course.id)
-    else:
-        form = CourseMaterialForm()
-        # restrict section choices to this course
-        form.fields['section'].queryset = CourseSection.objects.filter(course=course)
-
-    return render(request, 'courses/teacher/add_material.html', {'course': course, 'form': form})
+# Removed teacher_add_material and teacher_upload_material per user request

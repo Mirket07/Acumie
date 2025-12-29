@@ -2,7 +2,7 @@ from django import forms
 from decimal import Decimal
 from django.forms.models import inlineformset_factory, BaseInlineFormSet
 from .models import Course, Assessment
-from .models import AssessmentLearningOutcome, CourseMaterial, CourseSection
+from .models import AssessmentLearningOutcome
 
 DECIMAL_100 = Decimal("100.00")
 DECIMAL_ZERO = Decimal("0.00")
@@ -71,14 +71,3 @@ AssessmentFormSet = inlineformset_factory(
     extra=1,
     can_delete=True,
 )
-
-class CourseMaterialForm(forms.ModelForm):
-    # optional field to create a new section inline
-    new_section_title = forms.CharField(required=False, max_length=200, label='New Section Title', help_text='Optional: create a new section and add this material to it.')
-
-    class Meta:
-        model = CourseMaterial
-        fields = ('section', 'title', 'type', 'link')
-        widgets = {
-            'link': forms.URLInput(attrs={'placeholder': 'https://... (for LINK type)'}),
-        }
