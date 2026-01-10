@@ -1,119 +1,237 @@
 {% extends "base.html" %}
-{% block content %}
-<style>
-    .alo-container { max-width: 100%; overflow-x: hidden; }
-    .alo-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: nowrap; width: 100%; }
-    .alo-select { flex: 1; min-width: 0; }
-    .alo-select select { width: 100%; font-size: 0.85rem; }
-    .alo-input { width: 75px; flex-shrink: 0; }
-    .card-assessment { border-left: 6px solid #dc3545; }
-</style>
 
-<div class="container py-4">
-    {% if messages %}{% for message in messages %}<div class="alert alert-{{ message.tags }}">{{ message }}</div>{% endfor %}{% endif %}
-    <h2 class="mb-4">{% if is_create %}Create Course{% else %}Edit Course{% endif %}</h2>
-    <form method="post" id="course-form">
-        {% csrf_token %}{{ form.instructor }}
-        <div class="card mb-4 border-primary shadow-sm">
-            <div class="card-header bg-primary text-white fw-bold">1. Course Information</div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-3"><label class="small fw-bold">Code</label>{{ form.code }}</div>
-                    <div class="col-md-7"><label class="small fw-bold">Title</label>{{ form.title }}</div>
-                    <div class="col-md-2"><label class="small fw-bold">ECTS</label>{{ form.ects_credit }}</div>
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-11">
+            <div class="card shadow border-0">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0 fw-bold">
+                        {% if is_create %}Create New Course{% else %}Edit Course{% endif %}
+                    </h4>
+                    <a href="{% url 'grades:teacher_dashboard' %}" class="btn btn-outline-light btn-sm">Cancel</a>
                 </div>
-            </div>
-        </div>
-        <div class="card mb-4 border-info shadow-sm">
-            <div class="card-header bg-info text-white fw-bold">2. Learning Outcomes (LO)</div>
-            <div class="card-body p-0">
-                {{ lo_formset.management_form }}
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light"><tr><th class="ps-3">LO Title</th><th class="text-center" style="width: 80px;">Del</th></tr></thead>
-                    <tbody id="lo-tbody">
-                        {% for f in lo_formset %}<tr><td class="ps-3">{{ f.id }}{{ f.title }}</td><td class="text-center">{{ f.DELETE }}</td></tr>{% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold mb-0">3. Assessments & Synergy Mapping</h5>
-                <button type="button" class="btn btn-dark btn-sm" id="add-assessment">+ Add Assessment</button>
-            </div>
-            {{ formset.management_form }}{{ formset.non_field_errors }}
-            <div id="assessment-list">
-                {% for row in assessment_rows %}
-                <div class="card mb-4 card-assessment shadow-sm assessment-form-row">
-                    <div class="card-body bg-light">
-                        <div class="row g-2 align-items-center border-bottom pb-2 mb-3">
-                            {{ row.form.id }}
-                            <div class="col-md-5"><label class="small fw-bold">Type</label>{{ row.form.type }}</div>
-                            <div class="col-md-4"><label class="small fw-bold">Weight (%)</label>{{ row.form.weight_percentage }}</div>
-                            <div class="col-md-3 text-end pt-3">
-                                <span class="badge bg-danger p-2">{{ row.form.DELETE }} Delete Assessment</span>
-                            </div>
+                
+                <div class="card-body bg-light">
+                    {% if form.errors or formset.errors or lo_formset.errors %}
+                        <div class="alert alert-danger">
+                            <strong>Please check the errors below.</strong>
+                            {{ form.errors }}
+                            {{ formset.non_form_errors }}
+                            {{ lo_formset.non_form_errors }}
                         </div>
-                        <div class="mt-3 p-3 bg-white rounded border alo-container shadow-sm">
-                            <div class="d-flex justify-content-between border-bottom pb-2 mb-3">
-                                <h6 class="small fw-bold text-muted mb-0">LO Contributions (Optional):</h6>
-                                <button type="button" class="btn btn-link btn-sm p-0 add-alo-btn text-decoration-none">+ Add LO</button>
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <h5 class="text-primary border-bottom pb-2 mb-3">Course Details</h5>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Code</label>
+                                {{ form.code }}
                             </div>
-                            {{ row.alo_fs.management_form }}
-                            <div class="alo-list">
-                                {% for sub in row.alo_fs %}
-                                <div class="alo-row">
-                                    {{ sub.id }}{{ sub.learning_outcome }}
-                                    <div class="alo-input">{{ sub.contribution_percentage }}</div>
-                                    <span class="small fw-bold">%</span>
-                                    {% if sub.instance.pk %}<div class="small text-danger ms-1">{{ sub.DELETE }}</div>{% endif %}
+                            <div class="col-md-7">
+                                <label class="form-label fw-bold">Title</label>
+                                {{ form.title }}
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label fw-bold">ECTS</label>
+                                {{ form.ects_credit }}
+                            </div>
+                            {{ form.instructor }}
+                        </div>
+
+                        <h5 class="text-primary border-bottom pb-2 mb-3 d-flex justify-content-between align-items-center">
+                            Learning Outcomes
+                            <button type="button" class="btn btn-sm btn-primary" id="add-lo-btn">
+                                <i class="bi bi-plus-lg"></i> Add LO
+                            </button>
+                        </h5>
+                        
+                        {{ lo_formset.management_form }}
+                        <div id="lo-container">
+                            {% for form in lo_formset %}
+                            <div class="input-group mb-2">
+                                <span class="input-group-text bg-white">LO</span>
+                                {{ form.id }}
+                                {{ form.title }}
+                                <div class="input-group-text bg-light">
+                                    <div class="form-check mb-0">
+                                        {{ form.DELETE }}
+                                        <label class="form-check-label small text-danger">Del</label>
+                                    </div>
                                 </div>
-                                {% endfor %}
                             </div>
+                            {% endfor %}
                         </div>
-                    </div>
+
+                        <h5 class="text-primary border-bottom pb-2 mb-3 mt-5 d-flex justify-content-between align-items-center">
+                            Assessments
+                            <button type="button" class="btn btn-sm btn-primary" id="add-ass-btn">
+                                <i class="bi bi-plus-lg"></i> Add Assessment
+                            </button>
+                        </h5>
+
+                        {{ formset.management_form }}
+                        
+                        <div id="assessment-container">
+                            {% for row in assessment_rows %}
+                                <div class="card mb-4 border-secondary shadow-sm assessment-item">
+                                    <div class="card-header bg-secondary text-white py-2 d-flex justify-content-between align-items-center">
+                                        <span class="fw-bold">Assessment</span>
+                                        <div class="form-check">
+                                            {{ row.form.DELETE }}
+                                            <label class="form-check-label text-white small">Delete</label>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        {{ row.form.id }}
+                                        <div class="d-none">{{ row.form.name }}</div>
+
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-md-8">
+                                                <label class="small fw-bold">Type</label>
+                                                {{ row.form.type }}
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="small fw-bold">Weight (%)</label>
+                                                {{ row.form.weight_percentage }}
+                                            </div>
+                                        </div>
+
+                                        {% if row.alo_fs %}
+                                            <div class="bg-light p-3 border rounded">
+                                                <label class="small fw-bold text-muted mb-2 d-block">Learning Outcome Contributions:</label>
+                                                {{ row.alo_fs.management_form }}
+                                                {% for alo_form in row.alo_fs %}
+                                                    <div class="row g-1 mb-2 align-items-center">
+                                                        {{ alo_form.id }}
+                                                        <div class="col-md-7">
+                                                            {{ alo_form.learning_outcome }}
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="input-group input-group-sm">
+                                                                {{ alo_form.contribution_percentage }}
+                                                                <span class="input-group-text">%</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-2 text-center">
+                                                            <div class="form-check d-inline-block">
+                                                                {{ alo_form.DELETE }}
+                                                                <label class="form-check-label small text-danger">Del</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <div class="alert alert-warning py-1 small mb-0">
+                                                <i class="bi bi-info-circle"></i> Save the course first to add LO contributions for this assessment.
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-success btn-lg fw-bold">Save Changes</button>
+                        </div>
+                    </form>
                 </div>
-                {% endfor %}
             </div>
         </div>
-        <button type="submit" class="btn btn-success btn-lg w-100 shadow fw-bold py-3">SAVE</button>
-    </form>
+    </div>
 </div>
+
+<div id="empty-lo" style="display:none;">
+    <div class="input-group mb-2">
+        <span class="input-group-text bg-white">New</span>
+        <input type="text" name="outcomes-__prefix__-title" class="form-control" maxlength="200" id="id_outcomes-__prefix__-title">
+        <div class="input-group-text bg-light">
+            <div class="form-check mb-0">
+                <input type="checkbox" name="outcomes-__prefix__-DELETE" id="id_outcomes-__prefix__-DELETE">
+                <label class="form-check-label small text-danger">Del</label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="empty-ass" style="display:none;">
+    <div class="card mb-4 border-secondary shadow-sm assessment-item">
+        <div class="card-header bg-secondary text-white py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-bold">New Assessment</span>
+            <div class="form-check">
+                <input type="checkbox" name="assessments-__prefix__-DELETE" id="id_assessments-__prefix__-DELETE">
+                <label class="form-check-label text-white small">Delete</label>
+            </div>
+        </div>
+        <div class="card-body">
+            <input type="hidden" name="assessments-__prefix__-name" value="" id="id_assessments-__prefix__-name">
+            <div class="row g-2 mb-3">
+                <div class="col-md-8">
+                    <label class="small fw-bold">Type</label>
+                    <select name="assessments-__prefix__-type" class="form-select" id="id_assessments-__prefix__-type">
+                        <option value="MIDTERM">Midterm Exam</option>
+                        <option value="FINAL">Final Exam</option>
+                        <option value="PROJECT">Project</option>
+                        <option value="QUIZ">Quiz</option>
+                        <option value="ASSIGNMENT">Assignment</option>
+                        <option value="LAB">Laboratory</option>
+                        <option value="OTHER">Other</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="small fw-bold">Weight (%)</label>
+                    <input type="number" name="assessments-__prefix__-weight_percentage" step="0.01" class="form-control" id="id_assessments-__prefix__-weight_percentage">
+                </div>
+            </div>
+            <div class="alert alert-info py-1 small mb-0">
+                Please save first to configure Learning Outcomes.
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const assessmentList = document.getElementById('assessment-list');
-    const addAssessmentBtn = document.getElementById('add-assessment');
-    const assessmentTotalForms = document.getElementById('id_assessments-TOTAL_FORMS');
-    addAssessmentBtn.addEventListener('click', function() {
-        const count = parseInt(assessmentTotalForms.value);
-        const firstCard = assessmentList.querySelector('.assessment-form-row');
-        const newCard = firstCard.cloneNode(true);
-        newCard.innerHTML = newCard.innerHTML.replace(/assessments-\d+/g, `assessments-${count}`);
-        newCard.innerHTML = newCard.innerHTML.replace(/assessmentlearningoutcome-\d+/g, `assessmentlearningoutcome-${count}`);
-        newCard.querySelectorAll('input, select').forEach(el => { 
-            if(el.type !== 'hidden' && !el.classList.contains('form-check-input')) el.value = ''; 
-            if(el.type === 'hidden' && el.name.includes('id')) el.value = '';
+    const addLoBtn = document.getElementById('add-lo-btn');
+    const loContainer = document.getElementById('lo-container');
+    const loTotal = document.getElementById('id_outcomes-TOTAL_FORMS');
+    const emptyLo = document.getElementById('empty-lo').innerHTML;
+
+    if(addLoBtn){
+        addLoBtn.addEventListener('click', () => {
+            const count = parseInt(loTotal.value);
+            const newHtml = emptyLo.replace(/__prefix__/g, count);
+            loContainer.insertAdjacentHTML('beforeend', newHtml);
+            loTotal.value = count + 1;
         });
-        newCard.querySelector('input[name$="-TOTAL_FORMS"]').value = 1;
-        newCard.querySelector('input[name$="-INITIAL_FORMS"]').value = 0;
-        assessmentList.appendChild(newCard);
-        assessmentTotalForms.value = count + 1;
-    });
-    assessmentList.addEventListener('click', function(e) {
-        if (e.target.classList.contains('add-alo-btn')) {
-            const card = e.target.closest('.assessment-form-row');
-            const aloList = card.querySelector('.alo-list');
-            const totalForms = card.querySelector('input[name$="-TOTAL_FORMS"]');
-            const count = parseInt(totalForms.value);
-            const firstRow = aloList.querySelector('.alo-row');
-            const newRow = firstRow.cloneNode(true);
-            const regex = new RegExp(`assessmentlearningoutcome-\\d+-(\\d+)`, 'g');
-            newRow.innerHTML = newRow.innerHTML.replace(regex, (match, p1) => match.replace(`-${p1}`, `-${count}`));
-            newRow.querySelectorAll('input, select').forEach(el => { if(!el.name.includes('DELETE')) el.value = ''; });
-            aloList.appendChild(newRow);
-            totalForms.value = count + 1;
-        }
-    });
+    }
+
+    const addAssBtn = document.getElementById('add-ass-btn');
+    const assContainer = document.getElementById('assessment-container');
+    const assTotal = document.getElementById('id_assessments-TOTAL_FORMS');
+    const emptyAss = document.getElementById('empty-ass').innerHTML;
+
+    if(addAssBtn){
+        addAssBtn.addEventListener('click', () => {
+            const count = parseInt(assTotal.value);
+            const newHtml = emptyAss.replace(/__prefix__/g, count);
+            assContainer.insertAdjacentHTML('beforeend', newHtml);
+            assTotal.value = count + 1;
+        });
+    }
 });
 </script>
+
+<style>
+    input[type="text"], input[type="number"], select {
+        width: 100%;
+        padding: 0.375rem 0.75rem;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+    }
+</style>
 {% endblock %}

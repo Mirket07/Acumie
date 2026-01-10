@@ -1,51 +1,78 @@
 {% extends "base.html" %}
-{% block title %}Add Material - {{ course.code }}{% endblock %}
 {% block content %}
-<div class="container py-4">
-  <h3>Add Material for {{ course.code }} - {{ course.title }}</h3>
-  <form method="post" enctype="multipart/form-data" id="uploadForm"> {% csrf_token %}
-    <div class="mb-3">
-      <label class="form-label">Section (optional)</label>
-      {{ form.section }}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow border-0">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-0 fw-bold">Manage Course Content</h4>
+                        <span class="small opacity-75">{{ course.code }} - {{ course.title }}</span>
+                    </div>
+                    <a href="{% url 'courses:detail' course.id %}" class="btn btn-outline-light btn-sm">Back to Course</a>
+                </div>
+                <div class="card-body bg-light">
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ formset.management_form }}
+
+                        <div class="alert alert-info border-0 shadow-sm">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            Define your course sections (e.g., Week 1, Midterm Review). 
+                            Save sections first, then add materials to them.
+                        </div>
+
+                        <div id="section-list">
+                            {% for form in formset %}
+                            <div class="card mb-3 border shadow-sm">
+                                <div class="card-body p-3 d-flex align-items-center gap-3">
+                                    {{ form.id }}
+                                    <div class="flex-grow-1">
+                                        <label class="small text-muted fw-bold">Section Title</label>
+                                        {{ form.title }} 
+                                    </div>
+                                    <div style="width: 100px;">
+                                        <label class="small text-muted fw-bold">Order</label>
+                                        {{ form.order }}
+                                    </div>
+                                    <div class="pt-4">
+                                        <span class="text-danger small">{{ form.DELETE }} Delete</span>
+                                    </div>
+                                    
+                                    {% if form.instance.pk %}
+                                    <div class="pt-3 ms-3 border-start ps-3">
+                                        <a href="{% url 'courses:add_course_material' form.instance.id %}" class="btn btn-primary btn-sm fw-bold">
+                                            + Add Material
+                                        </a>
+                                    </div>
+                                    {% else %}
+                                    <div class="pt-3 ms-3 border-start ps-3">
+                                        <span class="text-muted small fst-italic">Save to add materials</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+                            <button type="submit" class="btn btn-success px-5 fw-bold shadow">Save Sections</button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="mb-3">
-      <label class="form-label">Title (optional)</label>
-      {{ form.title }}
-    </div>
-    <div class="mb-3">
-      <label class="form-label">Upload File</label>
-      {{ form.file }}
-    </div>
-    <div class="mb-3">
-      <label class="form-label">Or Link</label>
-      {{ form.link }}
-    </div>
-    <div>
-      <button class="btn btn-primary" type="submit">Upload</button>
-      <a class="btn btn-secondary" href="{% url 'courses:detail' course.id %}">Cancel</a>
-    </div>
-  </form>
 </div>
 
-<script>
-  // Auto-open file picker and submit if file selected
-  document.addEventListener('DOMContentLoaded', function(){
-    const fileInput = document.querySelector('#id_file');
-    if(fileInput){
-      fileInput.click();
-      fileInput.addEventListener('change', function(){
-        if(fileInput.files && fileInput.files.length){
-          // Optionally set the title field from filename
-          const titleInput = document.querySelector('#id_title');
-          if(titleInput && !titleInput.value){
-            titleInput.value = fileInput.files[0].name;
-          }
-          // submit the form automatically
-          document.getElementById('uploadForm').submit();
-        }
-      });
+<style>
+    input[type="text"], input[type="number"] {
+        width: 100%;
+        padding: 0.4rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
     }
-  });
-</script>
-
+</style>
 {% endblock %}

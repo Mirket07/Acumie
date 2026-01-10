@@ -1,164 +1,53 @@
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
-from decimal import Decimal
-from django.core.exceptions import ValidationError
-from django.db.models import Sum
 
 class Course(models.Model):
-    code = models.CharField(
-        max_length=15, 
-        unique=True, 
-        verbose_name="Course Code" 
-    )
-    title = models.CharField(
-        max_length=255, 
-        verbose_name="Course Title"
-    )
-    ects_credit = models.DecimalField(
-        max_digits=4, 
-        decimal_places=2,
-        validators=[MinValueValidator(0)],
-        verbose_name="ECTS Credit" 
-    )
-
-    class Meta:
-        verbose_name = "Course" 
-        verbose_name_plural = "Courses" 
+    code = models.CharField(max_length=20)
+    title = models.CharField(max_length=200)
+    ects_credit = models.PositiveIntegerField(default=5)
+    instructor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
         return f"{self.code} - {self.title}"
 
-    instructor = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='instructed_courses',
-        verbose_name="Instructor",
-        limit_choices_to={'role': 'INSTRUCTOR'} 
-    )
-
-class Assessment(models.Model):
-    ASSESSMENT_TYPES = [
-        ('MIDTERM', 'Midterm'), 
-        ('FINAL', 'Final'),     
-        ('HOMEWORK', 'Homework'), 
-        ('PROJECT', 'Project'), 
-        ('QUIZ', 'Quiz'),
-        ('ATTENDANCE', 'Attendance'),
-        ('OTHER', 'Other'),     
-    ]
-    
-    course = models.ForeignKey(
-        'Course',
-        on_delete=models.CASCADE, 
-        related_name='assessments',
-        verbose_name="Course" 
-    )
-
-    name = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-        verbose_name="Label / Name",
-    )
-
-    type = models.CharField(
-        max_length=10, 
-        choices=ASSESSMENT_TYPES,
-        default='MIDTERM',
-        verbose_name="Assessment Type" 
-    )
-    weight_percentage = models.DecimalField(
-        max_digits=5, 
-        decimal_places=2, 
-        validators=[MinValueValidator(0), MaxValueValidator(100)],
-        verbose_name="Weight Percentage (%)",
-        help_text="The contribution percentage of this assessment to the overall course grade." 
-    )
-    
-    learning_outcomes = models.ManyToManyField(
-        "outcomes.LearningOutcome",
-        through='AssessmentLearningOutcome',
-        related_name='assessments',
-        verbose_name="Associated Learning Outcomes (LOs)" ,
-        blank=True
-    )
-
-    class Meta:
-        verbose_name = "Assessment" 
-        verbose_name_plural = "Assessments"
-
-    def __str__(self):
-        label= f"{self.name} " if self.name else ""
-        return f"{self.course.code} - {self.get_type_display()}"
-
-    @property
-    def weight_fraction(self):
-        return (Decimal(self.weight_percentage) / Decimal(100)) if self.weight_percentage is not None else Decimal(0)
-
-    def clean(self):
-        if not getattr(self,"course_id",None):
-            return
-
-        qs=Assessment.objects.filter(course=self.course).exclude(pk=self.pk)
-        total_other=qs.aggregate(total=Sum('weight_percentage'))['total'] or 0
-        total=Decimal(total_other)+Decimal(self.weight_percentage or 0)
-
-        if total>Decimal(100):
-            raise ValidationError({'weight_percentage': f"Total weight for assessments in this course would exceed 100%. Current without this: {total_other}%. With this: {total}%."})
-
-
-class AssessmentLearningOutcome(models.Model):
-    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='lo_contributions')
-    learning_outcome = models.ForeignKey('outcomes.LearningOutcome', on_delete=models.CASCADE, related_name='assessment_contributions')
-    contribution_percentage = models.DecimalField(
-        max_digits=5, decimal_places=2,
-        validators=[MinValueValidator(0), MaxValueValidator(100)],
-        verbose_name="LO Contribution (%) from this Assessment",
-        help_text="Percentage (0-100) of this assessment's weight that maps to this LO."
-    )
-
-    class Meta:
-        unique_together = ('assessment', 'learning_outcome')
-        verbose_name = "Assessment-LO Contribution"
-        verbose_name_plural = "Assessment-LO Contributions"
-
-    def __str__(self):
-        return f"{self.assessment} -> {self.learning_outcome.code}: {self.contribution_percentage}%"
-
-
-
-
 class Enrollment(models.Model):
-    student = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        limit_choices_to={'role': 'STUDENT'},
-        related_name='enrollments',
-    )
-    course = models.ForeignKey(
-        Course, on_delete=models.CASCADE, related_name='enrollments',
-    )
-    enrolled_at = models.DateTimeField(auto_now_add=True)
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='enrollments')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrollments')
+    date_enrolled = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ('student', 'course')
 
+class Assessment(models.Model):
+    ASSESSMENT_TYPES = [
+        ('MIDTERM', 'Midterm Exam'),
+        ('FINAL', 'Final Exam'),
+        ('PROJECT', 'Project'),
+        ('QUIZ', 'Quiz'),
+        ('ASSIGNMENT', 'Assignment'),
+        ('LAB', 'Laboratory'),
+        ('OTHER', 'Other'),
+    ]
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='assessments')
+    type = models.CharField(max_length=20, choices=ASSESSMENT_TYPES)
+    weight_percentage = models.DecimalField(max_digits=5, decimal_places=2)
+    name = models.CharField(max_length=100, blank=True, default='')
+
     def __str__(self):
-        return f"{self.student.username} in {self.course.title}"
+        return f"{self.get_type_display()} ({self.weight_percentage}%) - {self.course.code}"
+
+class AssessmentLearningOutcome(models.Model):
+    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='lo_contributions')
+    learning_outcome = models.ForeignKey('outcomes.LearningOutcome', on_delete=models.CASCADE)
+    contribution_percentage = models.DecimalField(max_digits=5, decimal_places=2)
 
 class CourseSection(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sections')
-    title = models.CharField(max_length=200, verbose_name="Section Title") 
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="sections")
+    title = models.CharField(max_length=200)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['order']
-
-    def __str__(self):
-        return f"{self.course.code} - {self.title}"
 
 class CourseMaterial(models.Model):
     MATERIAL_TYPES = [
@@ -166,15 +55,8 @@ class CourseMaterial(models.Model):
         ('LINK', 'Link/URL'),
         ('ANNOUNCEMENT', 'Announcement'),
     ]
-    
     section = models.ForeignKey(CourseSection, on_delete=models.CASCADE, related_name='materials')
     title = models.CharField(max_length=200)
     type = models.CharField(max_length=20, choices=MATERIAL_TYPES, default='SLIDE')
-    link = models.URLField(blank=True, null=True, verbose_name="Link (if applicable)")
-    uploaded_file = models.FileField(upload_to='course_materials/', blank=True, null=True, verbose_name="Uploaded file")
-
-    class Meta:
-        verbose_name = "Course Material"
-
-    def __str__(self):
-        return self.title
+    file = models.FileField(upload_to="course_materials/", blank=True, null=True)
+    link = models.URLField(blank=True, null=True)
