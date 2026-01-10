@@ -52,7 +52,6 @@ class LearningOutcome(models.Model):
     def __str__(self):
         return f"{self.course.code} / {self.code} - {self.title}"
 
-
     def save(self, *args, **kwargs):
         if not self.code:
             counter = 1
@@ -68,7 +67,6 @@ class LearningOutcome(models.Model):
                     self.code = candidate_code
                     break
                 counter += 1
-        
         super().save(*args, **kwargs)
 
 class LO_PO_Contribution(models.Model):
@@ -96,3 +94,31 @@ class LO_PO_Contribution(models.Model):
 
     def __str__(self):
         return f"{self.learning_outcome.code} -> {self.program_outcome.code}: {self.contribution_percentage}%"
+
+class StudentProgramOutcomeScore(models.Model):
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='po_scores',
+        verbose_name="Student"
+    )
+    program_outcome = models.ForeignKey(
+        ProgramOutcome,
+        on_delete=models.CASCADE,
+        verbose_name="Program Outcome"
+    )
+    score = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0.00,
+        verbose_name="Calculated Score"
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Student PO Score"
+        verbose_name_plural = "Student PO Scores"
+        unique_together = ('student', 'program_outcome')
+
+    def __str__(self):
+        return f"{self.student} - {self.program_outcome.code}: {self.score}"

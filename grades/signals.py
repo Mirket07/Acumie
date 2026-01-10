@@ -1,58 +1,57 @@
-# grades/signals.py
-from django.db.models.signals import pre_save, post_save, post_delete
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from django.utils import timezone
+from .models import Grade
+from courses.models import AssessmentLearningOutcome
+from outcomes.models import LO_PO_Contribution, StudentProgramOutcomeScore
 
-from .models import Grade, GradeAudit
+@receiver([post_save, post_delete], sender=Grade)
+def recalculate_synergy_scores(sender, instance, **kwargs):
+    """
+    Bir not girildiğinde veya silindiğinde, o öğrencinin tüm PO skorlarını
+    tekrar hesaplar ve outcomes tablosuna kaydeder.
+    """
+    student = instance.student
+    print(f"--- 🔄 Sinyal Tetiklendi: {student.username} için Synergy Score Hesaplanıyor... ---")
 
+    all_grades = Grade.objects.filter(student=student)
 
-@receiver(pre_save, sender=Grade)
-def grade_pre_save(sender, instance: Grade, **kwargs):
-    if instance.pk:
-        try:
-            instance._pre_save_instance = Grade.objects.get(pk=instance.pk)
-        except Grade.DoesNotExist:
-            instance._pre_save_instance = None
-    else:
-        instance._pre_save_instance = None
+    po_totals = {} 
 
+    for grade in all_grades:
+        if not grade.score_percentage:
+            continue
 
-@receiver(post_save, sender=Grade)
-def grade_post_save(sender, instance: Grade, created: bool, **kwargs):
-    pre = getattr(instance, "_pre_save_instance", None)
-    changed_by = getattr(instance, "_changed_by", None)
+        score_val = float(grade.score_percentage)
+        assessment = grade.assessment
+        
+        alo_links = AssessmentLearningOutcome.objects.filter(assessment=assessment)
+        
+        for alo in alo_links:
+            lo = alo.learning_outcome
+            
+ 
+            contribution = (score_val * float(assessment.weight_percentage) * float(alo.contribution_percentage)) / 10000
+            
+   
+            po_links = LO_PO_Contribution.objects.filter(learning_outcome=lo)
+            
+            for link in po_links:
+                po = link.program_outcome
 
-    try:
-        GradeAudit.objects.create(
-            grade=instance if not created else instance,
-            student=instance.student,
-            assessment=instance.assessment,
-            learning_outcome=instance.learning_outcome,
-            changed_by=changed_by,
-            old_score=(pre.score_percentage if pre else None),
-            new_score=instance.score_percentage,
-            old_mastery=(pre.lo_mastery_score if pre else None),
-            new_mastery=instance.lo_mastery_score,
-            timestamp=timezone.now(),
+                factor = float(link.contribution_percentage) / 100.0
+                
+                final_point = contribution * factor
+                
+                if po not in po_totals:
+                    po_totals[po] = 0.0
+                po_totals[po] += final_point
+
+    for po, total_score in po_totals.items():
+        StudentProgramOutcomeScore.objects.update_or_create(
+            student=student,
+            program_outcome=po,
+            defaults={'score': total_score}
         )
-    except Exception:
-        pass
+        print(f"   ✅ KAYDEDİLDİ: {po.code} -> {total_score:.2f}")
 
-
-@receiver(post_delete, sender=Grade)
-def grade_post_delete(sender, instance: Grade, **kwargs):
-    try:
-        GradeAudit.objects.create(
-            grade=None,
-            student=instance.student,
-            assessment=instance.assessment,
-            learning_outcome=instance.learning_outcome,
-            changed_by=None,
-            old_score=instance.score_percentage,
-            new_score=None,
-            old_mastery=instance.lo_mastery_score,
-            new_mastery=None,
-            timestamp=timezone.now(),
-        )
-    except Exception:
-        pass
+    print("--- Hesaplama Tamamlandı ---")

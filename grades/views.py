@@ -5,39 +5,59 @@ from decimal import Decimal
 from courses.models import Course
 from .models import Grade
 from .utils import calculate_weighted_po_score, calculate_course_grade, get_4_scale_point
+from outcomes.models import StudentProgramOutcomeScore
 
 @login_required
 def grade_dashboard_view(request):
     user = request.user
     role = getattr(user, "role", "").upper() if hasattr(user, "role") else ""
     context = {"user_name": user.get_full_name() or user.username, "user_role": role}
+    
     if user.is_staff or user.is_superuser:
         courses_qs = Course.objects.all().order_by("code")
     elif role == "INSTRUCTOR":
         courses_qs = Course.objects.filter(instructor=user).order_by("code")
     else:
         courses_qs = Course.objects.filter(enrollments__student=user).distinct().order_by("code")
+    
     context["courses"] = courses_qs
     context["total_courses"] = courses_qs.count()
+    
     if role == "STUDENT":
         context["is_student"] = True
         course_results = []
         total_gpa_weighted = Decimal("0.00")
         total_ects = Decimal("0.00")
+        
         for course in courses_qs:
             score_100 = calculate_course_grade(user, course)
             point_4 = get_4_scale_point(score_100)
-            course_results.append({'code': course.code, 'title': course.title, 'ects': course.ects_credit, 'score': score_100, 'point': point_4})
+            course_results.append({
+                'code': course.code, 
+                'title': course.title, 
+                'ects': course.ects_credit, 
+                'score': score_100, 
+                'point': point_4
+            })
             total_gpa_weighted += (point_4 * Decimal(str(course.ects_credit)))
             total_ects += Decimal(str(course.ects_credit))
+            
         context["course_results"] = course_results
         context["overall_gpa"] = (total_gpa_weighted / total_ects) if total_ects > 0 else 0
-        try:
-            po_scores = calculate_weighted_po_score(user.id)
-        except:
-            po_scores = {}
+
+        db_scores = StudentProgramOutcomeScore.objects.filter(student=user)
+        
+
+        po_scores = {item.program_outcome.code: float(item.score) for item in db_scores}
+        
         context["po_scores"] = po_scores
-        context["average_po_score"] = f"{sum(po_scores.values())/len(po_scores):.2f}" if po_scores else "N/A"
+
+        if po_scores:
+            avg_score = sum(po_scores.values()) / len(po_scores)
+            context["average_po_score"] = f"{avg_score:.2f}"
+        else:
+            context["average_po_score"] = "0.00"
+
     return render(request, "grades/dashboard.html", context)
 
 @login_required
